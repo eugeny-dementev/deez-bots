@@ -6,7 +6,7 @@ import { promisify } from 'util';
 const asyncWriteFile = promisify(writeFile);
 const asyncReadFile = promisify(readFile);
 
-const filePath = process.env.TASKS_PATH;
+const filePath = process.env.TASKS_FILE;
 
 const bot = new Telegraf(process.env.BOT_TOKEN as string);
 
