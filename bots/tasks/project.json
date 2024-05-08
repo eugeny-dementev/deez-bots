@@ -51,6 +51,10 @@
           "buildTarget": "tasks:build:production"
         }
       }
+    },
+    "docker-build": {
+      "dependsOn": ["build"],
+      "command": "docker build -f bots/tasks/Dockerfile . -t tasks-bot-image"
     }
   }
 }
