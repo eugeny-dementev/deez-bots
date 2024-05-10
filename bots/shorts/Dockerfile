@@ -3,7 +3,13 @@
 # Build the docker image with `nx docker-build shorts`.
 # Tip: Modify "docker-build" options in project.json to change docker build args.
 #
-# Run the container with `docker run -v=path/to/shorts/file:/shorts.md --env-file=./bots/shorts/.production.env --name=shorts-bot shorts-bot-image`.
+# Run the container with
+# docker run -d --restart=always `
+# -v path/to/tmp:/tmp `
+# -v path/to/videos:/videos `
+# -v path/to/cookies.txt:/cookies.txt `
+# --env-file=./bots/shorts/.production.env `
+# --name=shorts-bot shorts-bot-image
 FROM docker.io/node:lts-alpine
 
 WORKDIR /app
