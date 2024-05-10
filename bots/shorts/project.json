@@ -51,6 +51,10 @@
           "buildTarget": "shorts:build:production"
         }
       }
+    },
+    "docker-build": {
+      "dependsOn": ["build"],
+      "command": "docker build -f bots/shorts/Dockerfile . -t shorts-bot-image"
     }
   }
 }
