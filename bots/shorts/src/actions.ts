@@ -1,5 +1,5 @@
 import { Action, QueueContext } from 'async-queue-runner';
-import { deleteAsync } from 'del';
+import del from 'del';
 import expendTilda from 'expand-tilde';
 import fsPromises from 'fs/promises';
 import { glob } from 'glob';
@@ -220,7 +220,7 @@ export class ExecuteCommand extends Action<CommandContext> {
 
 export class DeleteLastFile extends Action<LastFileContext> {
   async execute({ lastFile }: LastFileContext): Promise<void> {
-    await deleteAsync(lastFile, { force: true });
+    await del(lastFile, { force: true });
   }
 }
 

@@ -1,6 +1,5 @@
 {
   "name": "@deez-bots/source",
-  "type": "module",
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {},
@@ -31,9 +30,9 @@
   "dependencies": {
     "@types/expand-tilde": "^2.0.2",
     "@types/shelljs": "^0.8.15",
-    "async-queue-runner": "^0.10.0",
+    "async-queue-runner": "^0.11.0",
     "axios": "^1.6.0",
-    "del": "^7.1.0",
+    "del": "^6.1.1",
     "expand-tilde": "^2.0.2",
     "glob": "^10.3.14",
     "shelljs": "^0.8.5",
