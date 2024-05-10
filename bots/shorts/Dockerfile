@@ -10,7 +10,7 @@
 # -v path/to/cookies.txt:/cookies.txt `
 # --env-file=./bots/shorts/.production.env `
 # --name=shorts-bot shorts-bot-image
-FROM docker.io/node:lts-alpine
+FROM utils/dl
 
 WORKDIR /app
 
