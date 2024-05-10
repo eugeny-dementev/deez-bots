@@ -180,7 +180,7 @@ export class ExtractVideoDimentions extends Action<CommandContext> {
       .map((str: string): string[] => str.split('=').map(s => s.trim()))
       .reduce<VideoDimensions>((obj: VideoDimensions, pair: string[]): VideoDimensions => {
         const field = pair[0] as 'width' | 'height';
-        const value = Number(pair[0]);
+        const value = Number(pair[1]);
         obj[field] = value;
 
         return obj;
