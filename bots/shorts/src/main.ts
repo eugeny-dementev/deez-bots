@@ -32,7 +32,7 @@ bot.use(async (ctx, next) => {
 const queueRunner = new QueueRunner();
 
 queueRunner.addEndListener((name, size) => {
-  console.log(`Queue(${name}) finished. ${size} queues are still running`);
+  console.log(`Queue(${name}): finished. ${size} queues are still running`);
 })
 
 const getUserRole = rolesFactory(adminId, publishersIds)
