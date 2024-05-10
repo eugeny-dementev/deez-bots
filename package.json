@@ -28,6 +28,7 @@
     "typescript": "~5.4.2"
   },
   "dependencies": {
+    "async-queue-runner": "^0.10.0",
     "axios": "^1.6.0",
     "telegraf": "^4.16.3",
     "tslib": "^2.3.0"
