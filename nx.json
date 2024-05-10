@@ -54,7 +54,8 @@
         "targetName": "test"
       },
       "exclude": [
-        "bots/tasks-e2e/**/*"
+        "bots/tasks-e2e/**/*",
+        "bots/shorts-e2e/**/*"
       ]
     }
   ]
