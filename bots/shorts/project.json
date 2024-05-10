@@ -18,6 +18,7 @@
         "tsConfig": "bots/shorts/tsconfig.app.json",
         "assets": ["bots/shorts/src/assets"],
         "generatePackageJson": true,
+        "buildableProjectDepsInPackageJsonType": "dependencies",
         "esbuildOptions": {
           "sourcemap": true,
           "outExtension": {
