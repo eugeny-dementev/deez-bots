@@ -1,7 +1,7 @@
 /* eslint-disable */
 export default {
   displayName: 'shorts',
-  preset: '../../jest.preset.js',
+  extends: '../../jest.config.ts',
   testEnvironment: 'node',
   transform: {
     '^.+\\.[tj]s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],
