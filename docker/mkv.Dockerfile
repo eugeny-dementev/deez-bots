@@ -7,4 +7,4 @@ RUN echo "deb [signed-by=/usr/share/keyrings/gpg-pub-moritzbunkus.gpg] https://m
 RUN apt update
 RUN apt install -y mkvtoolnix
 
-# docker build -f mkv.Dockerfile --tag utils/automatization
+# docker build -f ./docker/mkv.Dockerfile --tag utils/automatization .

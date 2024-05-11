@@ -58,7 +58,7 @@
       "command": "docker build -f bots/torrents/Dockerfile . -t torrents-bot-image"
     },
     "docker-dl-build": {
-      "command": "docker build -f docker/dl.Dockerfile . -t utils/dl"
+      "command": "docker build -f docker/mkv.Dockerfile . -t utils/mkv"
     }
   }
 }
