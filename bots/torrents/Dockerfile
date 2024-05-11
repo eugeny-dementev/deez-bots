@@ -5,11 +5,11 @@
 #
 # Run the container with
 # docker run -d --restart=always `
-# -v path/to/tmp:/tmp `
-# -v path/to/videos:/videos `
-# -v path/to/cookies.txt:/cookies.txt `
-# --env-file=./bots/torrents/.production.env `
-# --name=torrents-bot torrents-bot-image
+#   --ipc=host `
+#   --security-opt seccomp=./bots/torrents/seccomp_profile.json `
+#   -v path/to/downloads:/downloads `
+#   --env-file=./bots/torrents/.production.env `
+#   --name torrents-bot torrents-bot-image
 FROM utils/mkv
 
 WORKDIR /app
