@@ -1,0 +1,61 @@
+{
+  "name": "shorts",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "bots/shorts/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "node",
+        "outputPath": "dist/bots/shorts",
+        "format": ["cjs"],
+        "bundle": false,
+        "main": "bots/shorts/src/main.ts",
+        "tsConfig": "bots/shorts/tsconfig.app.json",
+        "assets": ["bots/shorts/src/assets"],
+        "generatePackageJson": true,
+        "buildableProjectDepsInPackageJsonType": "dependencies",
+        "esbuildOptions": {
+          "sourcemap": true,
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {},
+        "production": {
+          "esbuildOptions": {
+            "sourcemap": false,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "serve": {
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "shorts:build"
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "shorts:build:development"
+        },
+        "production": {
+          "buildTarget": "shorts:build:production"
+        }
+      }
+    },
+    "docker-build": {
+      "dependsOn": ["build"],
+      "command": "docker build -f bots/shorts/Dockerfile . -t shorts-bot-image"
+    }
+  }
+}
