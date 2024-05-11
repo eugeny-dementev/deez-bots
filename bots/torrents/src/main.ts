@@ -17,6 +17,7 @@ const russianToEnglish = {
   'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu',
   'я': 'ya'
 };
+const russianLetters = new Set(Object.keys(russianToEnglish));
 
 const queue = new QueueRunner();
 
@@ -110,7 +111,11 @@ function convertRussianToEnglish(text: string) {
   const convertedText = text
     .toLowerCase()
     .split('')
-    .map((char: string) => russianToEnglish[char] || char)
+    .map((char: string) => {
+      if (russianLetters.has(char)) {
+        return russianToEnglish[char as keyof typeof russianToEnglish] || char;
+      } else return char;
+    })
     .join('')
     .replace(/\s+/g, '_')
     .replace(/[^a-z0-9_]/g, '');

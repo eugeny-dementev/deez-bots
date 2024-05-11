@@ -5,6 +5,7 @@ import * as path from "path";
 import { Page } from 'playwright';
 import { Action, util, QueueContext } from 'async-queue-runner';
 
+// @ts-ignore
 import parseTorrent from "parse-torrent";
 import { getDestination } from './torrent.js';
 import animeDubRecognizer from './multi-track.js';
