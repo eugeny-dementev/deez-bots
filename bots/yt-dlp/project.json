@@ -54,8 +54,11 @@
       }
     },
     "docker-build": {
-      "dependsOn": ["build"],
+      "dependsOn": ["build", "docker-dl-build"],
       "command": "docker build -f bots/yt-dlp/Dockerfile . -t yt-dlp-bot-image"
+    },
+    "docker-dl-build": {
+      "command": "docker build -f docker/dl.Dockerfile . -t utils/dl"
     }
   }
 }
