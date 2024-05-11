@@ -35,7 +35,7 @@
     "del": "^6.1.1",
     "expand-tilde": "^2.0.2",
     "glob": "^10.3.14",
-    "parse-torrent": "^11.0.16",
+    "parse-torrent": "^9.1.5",
     "playwright": "^1.44.0",
     "shelljs": "^0.8.5",
     "telegraf": "^4.16.3",
