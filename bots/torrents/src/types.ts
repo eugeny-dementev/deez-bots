@@ -1,49 +1,51 @@
-import { Telegraf } from "telegraf"
+import { BrowserContext as Browser, BrowserType, Page } from "playwright";
+import { Telegraf } from "telegraf";
+import { Logger } from "./logger.js";
 
-export type Timestampt = ReturnType<typeof Date.now>;
-
-export enum UserRole {
-  admin = 1,
-  publisher = 2,
-  subscriber = 3,
+export type PlaywrightContext = {
+  chromium: BrowserType,
 }
 
-export type UserLimitStatus = Record<string, Timestampt>
-export type UserRoles = Record<number, UserRole>
+type BLogger = {
+  info: (msg: string) => void,
+  error: (err: Error) => void,
+  adminInfo: (json: object) => void,
+}
 
 export type BotContext = {
-  limitsStatus: UserLimitStatus
-  cookiesPath: string
-  channelId: number
-  userId: number
-  chatId: number
-  url: string
-  bot: Telegraf
-  role: UserRole
+  bot: Telegraf,
+  filePath: string,
+  logger: Logger,
+  destination: string,
+  blogger: BLogger,
+  adminId: number,
+  chatId: number,
 }
 
-export type TimeLimitContext = {
-  timeLimitLeft: number,
-}
-
-export type FContextMessage<C> = (context: C) => Promise<string> | string;
-
-export type CommandContext = {
-  command?: string,
-  stdout: string,
-}
-
-export type LastFileContext = {
-  lastFile: string,
-}
-
-export type VideoDimensions = { width: number, height: number };
-export type VideoDimensionsContext = {
-  width: number,
-  height: number,
+export type BrowserContext = {
+  browser: Browser,
+  page: Page,
 };
 
-export type LinkType = 'reel' | 'short' | 'reddit'
-export type LinkTypeContext = {
-  type: LinkType,
+export type QBitTorrentContext = {
+  dir: string,
+  torrentFilePath: string,
 };
+
+export type TFile = {
+  name: string,
+  path: string,
+  length: number,
+  offset: number,
+}
+
+export type Torrent = {
+  files: TFile[],
+  name: string,
+}
+
+export type TorrentStatus = {
+  progress: number, // float 0.0 - 1.0
+  content_ath: string,
+  name: string,
+}

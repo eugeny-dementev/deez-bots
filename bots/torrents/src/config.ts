@@ -1,16 +1,23 @@
-export const swapDir = process.env.SWAP_DIR;
-export const homeDir = process.env.HOME_DIR;
+export const qBitTorrentHost = `http://${process.env.QBT_HOSTNAME ?? 'localhost'}:8080`;
 
-export const channelId = Number(process.env.CHANNEL_ID);
+export const downloadsDir = process.env.DOWNLOADS_DIR as string;
+if (!downloadsDir) {
+  throw new Error('No DOWNLOADS_DIR env provided');
+}
 
-if (!homeDir || !swapDir) throw new Error('SWAP_DIR and HOME_DIR must be specified');
-
-export const token = process.env.BOT_TOKEN as string
+export const token = process.env.BOT_TOKEN as string;
 
 export const publishersIds = String(process.env.PUBLISHERS_IDS)
   .split(',')
-  .map((id: string): number => parseInt(id))
+  .map((id) => Number(id));
 
-export const adminId = Number(process.env.ADMIN_ID);
+export const adminId = Number(process.env.ADMIN_ID as string);
+if (!adminId) {
+  throw new Error('No ADMIN_ID env provided');
+}
 
-export const cookiesPath = process.env.COOKIES_PATH;
+export const moviesDir = String(process.env.MOVIES_DIR);
+export const tvshowsDir = String(process.env.TV_SHOWS_DIR);
+
+export const audioPriorities = String(process.env.AUDIO_PRIORITIES).split(',');
+export const subsPriorities = String(process.env.SUBTITLE_PRIORITIES).split(',');

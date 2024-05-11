@@ -1,15 +1,6 @@
-import { UserRole } from './types.js';
-import { isValidRedditURL, isValidReelURL, isValidShortURL } from './validators.js';
-
-export function rolesFactory(adminId: number, publishersIds: number[]) {
-  const publishersIdsSet = new Set(publishersIds);
-  return function getRole(userId: number) {
-    if (userId === adminId) return UserRole.admin;
-
-    if (publishersIdsSet.has(userId)) return UserRole.publisher;
-
-    return UserRole.subscriber;
-  }
+export function nameCheckerFactory (name: string) {
+  const re = new RegExp(name, 'i');
+  return (item: string) => re.test(item);
 }
 
 export function formatTime(milliseconds: number) {
@@ -33,9 +24,6 @@ export function omit(obj: object, ...keys: string[]) {
   return Object.fromEntries(entries);
 }
 
-export function getLinkType(url: string): 'reel' | 'short' | 'reddit' | null {
-  if (isValidReelURL(url)) return 'reel';
-  if (isValidShortURL(url)) return 'short';
-  if (isValidRedditURL(url)) return 'reddit';
-  return null;
+export function sleep(timeout: number) {
+  return new Promise((res) => setTimeout(res, timeout));
 }
