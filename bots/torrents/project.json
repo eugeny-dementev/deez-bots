@@ -1,0 +1,64 @@
+{
+  "name": "torrents",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "bots/torrents/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "node",
+        "outputPath": "dist/bots/torrents",
+        "format": ["cjs"],
+        "bundle": false,
+        "main": "bots/torrents/src/main.ts",
+        "tsConfig": "bots/torrents/tsconfig.app.json",
+        "assets": ["bots/torrents/src/assets"],
+        "generatePackageJson": true,
+        "buildableProjectDepsInPackageJsonType": "dependencies",
+        "esbuildOptions": {
+          "sourcemap": true,
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {},
+        "production": {
+          "esbuildOptions": {
+            "sourcemap": false,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "serve": {
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "torrents:build"
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "torrents:build:development"
+        },
+        "production": {
+          "buildTarget": "torrents:build:production"
+        }
+      }
+    },
+    "docker-build": {
+      "dependsOn": ["build", "docker-dl-build"],
+      "command": "docker build -f bots/torrents/Dockerfile . -t torrents-bot-image"
+    },
+    "docker-dl-build": {
+      "command": "docker build -f docker/dl.Dockerfile . -t utils/dl"
+    }
+  }
+}
