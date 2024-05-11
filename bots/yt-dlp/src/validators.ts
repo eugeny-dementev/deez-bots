@@ -4,7 +4,7 @@ export function isValidURL(url: string) {
 
 /*
 URL {
-  href: 'https://youtube.com/shorts/23owdgVAV5k?si=fSGa2TFVepKT7gia',
+  href: 'https://youtube.com/yt-dlp/23owdgVAV5k?si=fSGa2TFVepKT7gia',
   origin: 'https://youtube.com',
   protocol: 'https:',
   username: '',
@@ -12,7 +12,7 @@ URL {
   host: 'youtube.com',
   hostname: 'youtube.com',
   port: '',
-  pathname: '/shorts/23owdgVAV5k',
+  pathname: '/yt-dlp/23owdgVAV5k',
   search: '?si=fSGa2TFVepKT7gia',
   searchParams: URLSearchParams { 'si' => 'fSGa2TFVepKT7gia' },
   hash: ''
@@ -22,7 +22,7 @@ export function isValidShortURL(url: string) {
   try {
     new URL(url);
 
-    if (!/shorts\/[a-zA-Z0-9\-_]{11}/.test(url)) {
+    if (!/yt-dlp\/[a-zA-Z0-9\-_]{11}/.test(url)) {
       return false;
     }
 

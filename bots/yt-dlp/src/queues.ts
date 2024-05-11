@@ -67,7 +67,7 @@ export const shortHandlerQueue: () => QueueAction[] = () => [
         ],
         else: [
           DeleteLimitStatus,
-          shortcut.notify('Invalid URL: only YouTube shorts and Reddit videos links'),
+          shortcut.notify('Invalid URL: only YouTube yt-dlp and Reddit videos links'),
         ],
       }),
     ],
