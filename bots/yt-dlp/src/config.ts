@@ -1,5 +1,6 @@
 export const swapDir = process.env.SWAP_DIR;
 export const homeDir = process.env.HOME_DIR;
+export const storageDir = process.env.STORAGE_DIR;
 
 export const channelId = Number(process.env.CHANNEL_ID);
 

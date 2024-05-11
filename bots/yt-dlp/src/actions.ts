@@ -5,28 +5,28 @@ import fsPromises from 'fs/promises';
 import { glob } from 'glob';
 import path from 'path';
 import shelljs from 'shelljs';
-import { homeDir, swapDir } from './config.js';
+import { homeDir, storageDir, swapDir } from './config.js';
 import { USER_LIMITS } from './constants.js';
-import { getLinkType, omit } from './helpers.js';
+import { omit, parseFormatsListing } from './helpers.js';
 import {
   BotContext,
   CommandContext,
   FContextMessage,
   LastFileContext,
-  LinkTypeContext,
+  NotificationOptions,
   VideoDimensions,
   VideoDimensionsContext,
 } from './types.js';
 
 export class Notification<C> extends Action<BotContext> {
   message: string | FContextMessage<C & BotContext>;
-  silent: boolean;
+  options: NotificationOptions = { update: false, silent: true };
 
-  constructor(message: string | FContextMessage<C & BotContext>, silent: boolean = true) {
+  constructor(message: string | FContextMessage<C & BotContext>, options: Partial<NotificationOptions> = {}) {
     super();
 
     this.message = message;
-    this.silent = silent;
+    Object.assign(this.options, options);
   }
 
   async execute(context: C & BotContext & QueueContext): Promise<void> {
@@ -36,7 +36,7 @@ export class Notification<C> extends Action<BotContext> {
       ? await this.message(context)
       : this.message;
 
-    bot.telegram.sendMessage(chatId, msg, { disable_notification: this.silent });
+    bot.telegram.sendMessage(chatId, msg, { disable_notification: this.options.silent });
   }
 }
 
@@ -58,12 +58,6 @@ export class CalcTimeLeft extends Action<BotContext> {
   }
 }
 
-export class GetLinkType extends Action<BotContext> {
-  async execute({ url, extend }: BotContext & QueueContext): Promise<void> {
-    extend({ type: getLinkType(url) });
-  }
-}
-
 export class SetLimitStatus extends Action<BotContext> {
   async execute(context: BotContext & QueueContext): Promise<void> {
     const { userId, limitsStatus } = context;
@@ -82,7 +76,8 @@ export class DeleteLimitStatus extends Action<BotContext> {
 
 export class Log extends Action<any> {
   async execute(context: any): Promise<void> {
-    console.log(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name', 'stdout'));
+    // console.log(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name', 'stdout'));
+    console.log(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name'));
   }
 }
 
@@ -96,17 +91,14 @@ export class CleanUpUrl extends Action<BotContext> {
   }
 }
 
-export class PrepareYtDlpCommand extends Action<LinkTypeContext & BotContext> {
-  async execute({ url, type, cookiesPath, extend, userId }: LinkTypeContext & BotContext & QueueContext): Promise<void> {
-    if (!homeDir) throw Error('No HOME_DIR specified');
-
-    const userHomeDir = path.join(homeDir, String(userId));
-
+export class GetVideoFormatsListingCommand extends Action<BotContext> {
+  async execute({ url, cookiesPath, extend }: BotContext & QueueContext): Promise<void> {
     const commandArr: string[] = [];
 
-    commandArr.push(`yt-dlp -S "res:720" --paths home:${userHomeDir} --paths temp:${swapDir}`);
-    if (type === 'reel' && cookiesPath) commandArr.push(`--cookies ${cookiesPath}`);
-    commandArr.push(`--output "%(id)s.%(ext)s" ${url}`);
+    commandArr.push(`yt-dlp`)
+    commandArr.push('--list-formats')
+    commandArr.push(`--cookies ${cookiesPath}`);
+    commandArr.push(url);
 
     const command = commandArr.join(' ');
 
@@ -114,8 +106,72 @@ export class PrepareYtDlpCommand extends Action<LinkTypeContext & BotContext> {
   }
 }
 
-export class FindLastFile extends Action<BotContext> {
-  async execute({ userId, extend }: BotContext & QueueContext): Promise<void> {
+export class CheckVideoSize extends Action<CommandContext> {
+  async execute({ stdout, extend }: CommandContext & QueueContext): Promise<void> {
+    let videoMeta: ReturnType<typeof parseFormatsListing> = [];
+
+    try {
+      const metas = parseFormatsListing(stdout);
+
+      if (Array.isArray(metas) && metas.length > 0)
+
+      videoMeta = metas;
+
+    } catch (e) {
+      console.error(e);
+      console.log(stdout);
+    }
+
+    extend({ videoMeta });
+  }
+}
+
+export class PrepareYtDlpCommand extends Action<BotContext> {
+  async execute({ url, destDir, cookiesPath, extend, userId, destFileName }: BotContext & QueueContext & { destDir: string }): Promise<void> {
+    if (!destDir) throw Error('No destDir specified');
+
+    const userHomeDir = path.join(destDir, destDir == homeDir ? String(userId) : '');
+
+    const commandArr: string[] = [];
+
+    commandArr.push(`yt-dlp -S "res:${destDir === storageDir ? '1080' : '480'}"`)
+    commandArr.push(`--paths home:${userHomeDir}`)
+    commandArr.push(`--paths temp:${swapDir}`);
+    commandArr.push(`--cookies ${cookiesPath}`);
+    if (destDir === homeDir) commandArr.push(`--output "${destFileName}.%(ext)s"`);
+    else commandArr.push(`--output "${destFileName}.%(title)s.%(ext)s"`);
+    commandArr.push(url);
+
+    const command = commandArr.join(' ');
+
+    extend({ command });
+  }
+}
+
+export class FindMainFile extends Action<BotContext> {
+  async execute({ extend, destFileName }: BotContext & QueueContext): Promise<void> {
+
+    if (!storageDir) throw new Error('No storage dir found');
+
+    let homePath = storageDir;
+
+    if (homePath.includes('~')) homePath = expendTilda(homePath);
+
+    const pattern = path.join(homePath, `${destFileName}.*`);
+    const files = await glob.glob(pattern, { windowsPathsNoEscape: true });
+
+    if (files.length === 0) {
+      return;
+    }
+
+    const mainFile = files[0];
+
+    extend({ globPattern: pattern, globFiles: files, mainFile });
+  }
+}
+
+export class FindFile extends Action<BotContext> {
+  async execute({ userId, extend, destFileName }: BotContext & QueueContext): Promise<void> {
 
     if (!homeDir) throw new Error('No home dir found');
 
@@ -123,38 +179,28 @@ export class FindLastFile extends Action<BotContext> {
 
     if (homePath.includes('~')) homePath = expendTilda(homePath);
 
-    const pattern = path.join(homePath, String(userId), '*');
+    const pattern = path.join(homePath, String(userId), `${destFileName}.*`);
     const files = await glob.glob(pattern, { windowsPathsNoEscape: true });
 
     if (files.length === 0) {
       return;
     }
 
-    const filesStats = await Promise.all(files.map(async (name) => ({
-      name, ctime: (await fsPromises.stat(name)).ctime,
-    })))
+    const lastFile = files[0];
 
-    const lastFile = filesStats
-      .sort((a: { ctime: Date }, b: { ctime: Date }): number => b.ctime.getTime() - a.ctime.getTime())[0].name
-
-
-    extend({ lastFile });
-  }
-}
-
-export class RindLadstFile extends Action<BotContext> {
-  async execute(context: BotContext & QueueContext): Promise<void> {
+    extend({ globPattern: pattern, globFiles: files, lastFile });
   }
 }
 
 export class PrepareConvertCommand extends Action<LastFileContext> {
   async execute({ lastFile, extend }: LastFileContext & QueueContext): Promise<void> {
     const fileData = path.parse(lastFile);
-    const newFilePath = path.join(fileData.dir, `new_${fileData.name}.mp4`);
-    // ffmpeg -i ./YKUNMpHk_cs.mp4 ./new_YKUNMpHk_cs.mp4
-    const command = `ffmpeg -i ${lastFile} ${newFilePath}`;
+    const newFileName = `new_${fileData.name}`;
+    const newFilePath = path.join(fileData.dir, `${newFileName}.mp4`);
+    // ffmpeg -i ./YKUNMpHk_cs.any ./new_YKUNMpHk_cs.mp4
+    const command = `ffmpeg -i ${lastFile} -c:v libx264 -crf 28 -preset veryslow -c:a copy ${newFilePath}`;
 
-    extend({ command });
+    extend({ command, destFileName: newFileName });
   }
 }
 
@@ -218,7 +264,7 @@ export class ExecuteCommand extends Action<CommandContext> {
   }
 }
 
-export class DeleteLastFile extends Action<LastFileContext> {
+export class DeleteFile extends Action<LastFileContext> {
   async execute({ lastFile }: LastFileContext): Promise<void> {
     await del(lastFile, { force: true });
   }

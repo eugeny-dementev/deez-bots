@@ -32,7 +32,7 @@ bot.use(async (ctx, next) => {
 const queueRunner = new QueueRunner();
 
 queueRunner.addEndListener((name, size) => {
-  console.log(`Queue(${name}): finished. ${size} queues are still running`);
+  console.log(`Queue(${name}) finished. ${size} queues are still running`);
 })
 
 const getUserRole = rolesFactory(adminId, publishersIds)
@@ -54,6 +54,7 @@ bot.on(message('text'), async (ctx) => {
     url,
     bot,
     role,
+    destFileName: queueRunner.getName(),
   };
 
   const queueName = `${userId}_${queueRunner.getName()}`;
@@ -61,9 +62,7 @@ bot.on(message('text'), async (ctx) => {
   queueRunner.add(shortHandlerQueue(), context, queueName);
 });
 
-bot.launch(() => {
-  console.log('bot launched');
-});
+bot.launch();
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));

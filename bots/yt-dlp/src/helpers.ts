@@ -1,5 +1,4 @@
 import { UserRole } from './types.js';
-import { isValidRedditURL, isValidReelURL, isValidShortURL } from './validators.js';
 
 export function rolesFactory(adminId: number, publishersIds: number[]) {
   const publishersIdsSet = new Set(publishersIds);
@@ -33,9 +32,15 @@ export function omit(obj: object, ...keys: string[]) {
   return Object.fromEntries(entries);
 }
 
-export function getLinkType(url: string): 'reel' | 'short' | 'reddit' | null {
-  if (isValidReelURL(url)) return 'reel';
-  if (isValidShortURL(url)) return 'short';
-  if (isValidRedditURL(url)) return 'reddit';
-  return null;
+export function parseFormatsListing(str: string): { res: number, size: number }[] {
+  return str
+    .split('\n')
+    .filter(l => l.includes('MiB') && /[0-9]+x[0-9]+/.test(l))
+    .map((l: string) => ({
+      // @ts-ignore
+      res: Math.min(.../[0-9]+x[0-9]+/.exec(l)[0].split('x').map(v => parseInt(v))),
+      // @ts-ignore
+      size: parseFloat(/([0-9]+\.?[0-9]{2}?)MiB/.exec(l)[1]),
+    }))
+    .reverse();
 }
