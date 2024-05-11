@@ -10,15 +10,11 @@
 # -v path/to/cookies.txt:/cookies.txt `
 # --env-file=./bots/torrents/.production.env `
 # --name=torrents-bot torrents-bot-image
-FROM utils/dl
+FROM utils/mkv
 
 WORKDIR /app
 
-RUN addgroup --system torrents && \
-    adduser --system -G torrents torrents
-
 COPY dist/bots/torrents torrents
-RUN chown -R torrents:torrents .
 
 # You can remove this install step if you build with `--bundle` option.
 # The bundled output will include external dependencies.
