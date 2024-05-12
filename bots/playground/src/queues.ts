@@ -1,4 +1,4 @@
-import { ytdlp, YtDlpSizesOutput, notifications, InjectNotifications } from '@libs/actions';
+import { ytdlp, YtDlpSizesOutput, notifications, InjectNotifications, InjectLogger } from '@libs/actions';
 import { QueueAction, util } from "async-queue-runner";
 import {
   CalcTimeLeft,
@@ -24,6 +24,7 @@ import { BotContext, TimeLimitContext } from "./types.js";
 import { isValidURL } from "./validators.js";
 
 export const shortHandlerQueue: () => QueueAction[] = () => [
+  InjectLogger,
   InjectNotifications,
   Log,
   CalcTimeLeft,
