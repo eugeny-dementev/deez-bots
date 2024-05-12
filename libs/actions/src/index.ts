@@ -1,1 +1,1 @@
-export * from './lib/actions';
+export { ytdlp } from './lib/yt-dlp.js';
