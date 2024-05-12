@@ -9,6 +9,10 @@ describe('libs/command', () => {
     it('should prepare command line for yt-dlp with args', () => {
       expect(prepare('yt-dlp').add('-S "res:720"').toString()).toEqual('yt-dlp -S "res:720"');
     });
+
+    it('should not add argument if second parameter is false', () => {
+      expect(prepare('yt-dlp').add('-S some', false).toString()).toEqual('yt-dlp');
+    });
   });
 
   describe('exec', () => {
