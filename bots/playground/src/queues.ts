@@ -1,4 +1,4 @@
-import { ytdlp } from '@libs/actions';
+import { ytdlp, YtDlpSizesOutput } from '@libs/actions';
 import { QueueAction, util } from "async-queue-runner";
 import {
   CalcTimeLeft,
@@ -20,7 +20,7 @@ import {
 import { homeDir, storageDir } from "./config.js";
 import { formatTime } from "./helpers.js";
 import { shortcut } from "./shortcuts.js";
-import { BotContext, TimeLimitContext, VideoMetaContext } from "./types.js";
+import { BotContext, TimeLimitContext } from "./types.js";
 import { isValidURL } from "./validators.js";
 
 export const shortHandlerQueue: () => QueueAction[] = () => [
@@ -44,7 +44,7 @@ export const shortHandlerQueue: () => QueueAction[] = () => [
               ExecuteCommand,
               FindMainFile,
               Log,
-              util.if<VideoMetaContext>(({ videoMeta }) => Boolean(videoMeta.find(({ size, res }) => res >= 400 && res <= 500 && size < 50.0)), {
+              util.if<YtDlpSizesOutput>(({ sizes }) => Boolean(sizes.find(({ size, res }) => res >= 400 && res <= 500 && size < 50.0)), {
                 then: [
                   shortcut.extend({ title: false }),
                   shortcut.extend({ destDir: homeDir }),

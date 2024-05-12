@@ -49,10 +49,6 @@ export type VideoDimensionsContext = {
   height: number,
 };
 
-export type VideoMetaContext = {
-  videoMeta: ReturnType<typeof parseFormatsListing>,
-}
-
 export type LinkType = 'reel' | 'short' | 'reddit'
 export type LinkTypeContext = {
   type: LinkType,
