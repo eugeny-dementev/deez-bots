@@ -50,6 +50,7 @@ bot.on(message('text'), async (ctx) => {
     limitsStatus,
     cookiesPath,
     channelId,
+    adminId,
     userId,
     chatId,
     url,
