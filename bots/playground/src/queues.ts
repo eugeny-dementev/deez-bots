@@ -34,15 +34,13 @@ export const shortHandlerQueue: () => QueueAction[] = () => [
           CleanUpUrl,
           ytdlp.sizes({
             then: [
-              shortcut.extend({ title: true }),
-              shortcut.extend({ destDir: storageDir }),
+              shortcut.extend({ title: true, destDir: storageDir }),
               notifications.tlog('Downloading full video to storage'),
               DownloadVideo,
               FindMainFile,
               util.if<YtDlpSizesOutput>(({ sizes }) => Boolean(sizes.find(({ size, res }) => res >= 400 && res <= 500 && size < 50.0)), {
                 then: [
-                  shortcut.extend({ title: false }),
-                  shortcut.extend({ destDir: homeDir }),
+                  shortcut.extend({ title: false, destDir: homeDir }),
                   notifications.tlog('Downloading video for telegram'),
                   DownloadVideo,
                   FindFile,
