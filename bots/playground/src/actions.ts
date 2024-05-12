@@ -6,20 +6,20 @@ import expendTilda from 'expand-tilde';
 import fsPromises from 'fs/promises';
 import { glob } from 'glob';
 import path from 'path';
-import shelljs from 'shelljs';
 import { homeDir, storageDir, swapDir } from './config.js';
 import { USER_LIMITS } from './constants.js';
 import { omit } from './helpers.js';
 import {
   BotContext,
-  CommandContext,
   LastFileContext,
   VideoDimensions,
   VideoDimensionsContext,
 } from './types.js';
 
-export class CalcTimeLeft extends Action<BotContext> {
-  async execute(context: BotContext & QueueContext): Promise<void> {
+type CompContext = BotContext & NotificationsOutput & LoggerOutput;
+
+export class CalcTimeLeft extends Action<CompContext> {
+  async execute(context: CompContext & QueueContext): Promise<void> {
     const { userId, role, limitsStatus, extend } = context;
 
     const currentUserLimit = USER_LIMITS[role];
@@ -36,16 +36,16 @@ export class CalcTimeLeft extends Action<BotContext> {
   }
 }
 
-export class SetLimitStatus extends Action<BotContext> {
-  async execute(context: BotContext & QueueContext): Promise<void> {
+export class SetLimitStatus extends Action<CompContext> {
+  async execute(context: CompContext & QueueContext): Promise<void> {
     const { userId, limitsStatus } = context;
 
     limitsStatus[userId] = Date.now();
   }
 }
 
-export class DeleteLimitStatus extends Action<BotContext> {
-  async execute(context: BotContext & QueueContext): Promise<void> {
+export class DeleteLimitStatus extends Action<CompContext> {
+  async execute(context: CompContext & QueueContext): Promise<void> {
     const { userId, limitsStatus } = context;
 
     delete limitsStatus[userId];
@@ -59,8 +59,8 @@ export class Log extends Action<any> {
   }
 }
 
-export class CleanUpUrl extends Action<BotContext> {
-  async execute({ url, extend }: BotContext & QueueContext): Promise<void> {
+export class CleanUpUrl extends Action<CompContext> {
+  async execute({ url, extend }: CompContext & QueueContext): Promise<void> {
     const l = new URL(url);
 
     const cleanUrl = `${l.origin}${l.pathname}`;
@@ -69,8 +69,8 @@ export class CleanUpUrl extends Action<BotContext> {
   }
 }
 
-export class DownloadVideo extends Action<BotContext & NotificationsOutput> {
-  async execute({ url, destDir, cookiesPath, userId, destFileName, terr, tlog }: BotContext & NotificationsOutput & QueueContext & { destDir: string }): Promise<void> {
+export class DownloadVideo extends Action<CompContext & NotificationsOutput> {
+  async execute({ url, destDir, cookiesPath, userId, destFileName, terr, tlog }: CompContext & QueueContext & { destDir: string }): Promise<void> {
     if (!destDir) throw Error('No destDir specified');
 
     const userHomeDir = path.join(destDir, destDir == homeDir ? String(userId) : '');
@@ -102,8 +102,8 @@ export class DownloadVideo extends Action<BotContext & NotificationsOutput> {
   }
 }
 
-export class FindMainFile extends Action<BotContext> {
-  async execute({ extend, destFileName }: BotContext & QueueContext): Promise<void> {
+export class FindMainFile extends Action<CompContext> {
+  async execute({ extend, destFileName }: CompContext & QueueContext): Promise<void> {
 
     if (!storageDir) throw new Error('No storage dir found');
 
@@ -124,8 +124,8 @@ export class FindMainFile extends Action<BotContext> {
   }
 }
 
-export class FindFile extends Action<BotContext> {
-  async execute({ userId, extend, destFileName }: BotContext & QueueContext): Promise<void> {
+export class FindFile extends Action<CompContext> {
+  async execute({ userId, extend, destFileName }: CompContext & QueueContext): Promise<void> {
 
     if (!homeDir) throw new Error('No home dir found');
 
@@ -146,8 +146,8 @@ export class FindFile extends Action<BotContext> {
   }
 }
 
-export class ConvertVideo extends Action<LastFileContext & BotContext & NotificationsOutput & LoggerOutput> {
-  async execute({ lastFile, url, terr, tlog }: LastFileContext & BotContext & NotificationsOutput & LoggerOutput & QueueContext): Promise<void> {
+export class ConvertVideo extends Action<LastFileContext & CompContext > {
+  async execute({ lastFile, url, terr, tlog }: LastFileContext & CompContext & QueueContext): Promise<void> {
     const fileData = path.parse(lastFile);
     const newFileName = `${fileData.name}.new`;
     const newFilePath = path.join(fileData.dir, `${newFileName}.mp4`);
@@ -177,8 +177,8 @@ export class ConvertVideo extends Action<LastFileContext & BotContext & Notifica
   }
 }
 
-export class ExtractVideoDimentions extends Action<LastFileContext & NotificationsOutput & LoggerOutput> {
-  async execute({ lastFile, extend, terr, tlog }: LastFileContext & NotificationsOutput & LoggerOutput & QueueContext): Promise<void> {
+export class ExtractVideoDimentions extends Action<CompContext & LastFileContext > {
+  async execute({ lastFile, extend, terr, tlog }: LastFileContext & CompContext & QueueContext): Promise<void> {
     // command
     // ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1 .\YKUNMpHk_cs.mp4
     //
@@ -219,8 +219,8 @@ export class DeleteFile extends Action<LastFileContext> {
   }
 }
 
-export class UploadVideo extends Action<BotContext & NotificationsOutput & VideoDimensionsContext & LastFileContext> {
-  async execute({ lastFile, bot, width, height, channelId, terr, tlog }: VideoDimensionsContext & BotContext & NotificationsOutput & LastFileContext & QueueContext): Promise<void> {
+export class UploadVideo extends Action<CompContext & VideoDimensionsContext & LastFileContext> {
+  async execute({ lastFile, bot, width, height, channelId, terr, tlog }: VideoDimensionsContext & CompContext & LastFileContext & QueueContext): Promise<void> {
     const videoBuffer = await fsPromises.readFile(lastFile);
 
     try {
@@ -234,8 +234,8 @@ export class UploadVideo extends Action<BotContext & NotificationsOutput & Video
   }
 }
 
-export class SetChatIdToChannelId extends Action<BotContext> {
-  async execute({ chatId, extend }: BotContext & QueueContext): Promise<void> {
+export class SetChatIdToChannelId extends Action<CompContext> {
+  async execute({ chatId, extend }: CompContext & QueueContext): Promise<void> {
     extend({ channelId: chatId });
   }
 }
