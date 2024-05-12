@@ -24,9 +24,7 @@ import { isValidURL } from "./validators.js";
 export const shortHandlerQueue: () => QueueAction[] = () => [
   InjectLogger,
   InjectNotifications,
-  Log,
   CalcTimeLeft,
-  Log,
   SetLimitStatus,
   util.if<BotContext>(({ url }) => isValidURL(url), {
     then: [
@@ -41,7 +39,6 @@ export const shortHandlerQueue: () => QueueAction[] = () => [
               notifications.tlog('Downloading full video to storage'),
               DownloadVideo,
               FindMainFile,
-              Log,
               util.if<YtDlpSizesOutput>(({ sizes }) => Boolean(sizes.find(({ size, res }) => res >= 400 && res <= 500 && size < 50.0)), {
                 then: [
                   shortcut.extend({ title: false }),
@@ -49,25 +46,19 @@ export const shortHandlerQueue: () => QueueAction[] = () => [
                   notifications.tlog('Downloading video for telegram'),
                   DownloadVideo,
                   FindFile,
-                  Log,
                   notifications.tlog('Preparing video for telegram'),
                   ConvertVideo,
-                  Log,
                   DeleteFile,
                   FindFile,
-                  Log,
                   ExtractVideoDimentions,
-                  Log,
                   util.if<BotContext>(({ channelId }) => Boolean(channelId), {
                     then: [
-                      Log,
                       UploadVideo,
                       notifications.tlog('Video uploaded to the telegram'),
                     ],
                     else: [
                       DeleteLimitStatus,
                       SetChatIdToChannelId,
-                      Log,
                       UploadVideo,
                       notifications.tlog('Processing complete'),
                     ],
