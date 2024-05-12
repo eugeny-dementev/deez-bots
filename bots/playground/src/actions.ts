@@ -146,7 +146,7 @@ export class FindFile extends Action<CompContext> {
   }
 }
 
-export class ConvertVideo extends Action<LastFileContext & CompContext > {
+export class ConvertVideo extends Action<LastFileContext & CompContext> {
   async execute({ lastFile, url, terr, tlog }: LastFileContext & CompContext & QueueContext): Promise<void> {
     const fileData = path.parse(lastFile);
     const newFileName = `${fileData.name}.new`;
@@ -177,7 +177,7 @@ export class ConvertVideo extends Action<LastFileContext & CompContext > {
   }
 }
 
-export class ExtractVideoDimentions extends Action<CompContext & LastFileContext > {
+export class ExtractVideoDimentions extends Action<CompContext & LastFileContext> {
   async execute({ lastFile, extend, terr, tlog }: LastFileContext & CompContext & QueueContext): Promise<void> {
     // command
     // ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1 .\YKUNMpHk_cs.mp4
