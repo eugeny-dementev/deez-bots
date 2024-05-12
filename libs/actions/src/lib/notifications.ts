@@ -31,11 +31,17 @@ export class InjectNotifications extends Action<NotificationsContext> {
     }
 
     const terr = async (msg: string | Error): Promise<void> => {
+      if (!context.adminId) {
+        console.error('No adminId in the context');
+
+        return;
+      }
+
       if (typeof msg === 'string') {
         await t.sendMessage(context.adminId, msg);
       } else if(msg instanceof Error) {
         const cleanStack = await import('clean-stack');
-        const stack = cleanStack.default(msg.stack!);
+        const stack = cleanStack.default(msg.stack!, { pretty: true, basePath: process.cwd() });
         await t.sendMessage(context.adminId, '```\n' + stack + '\n```', { parse_mode: 'MarkdownV2' });
       } else {
         await t.sendMessage(context.adminId, `Unrecognized error: ${typeof msg}`);
