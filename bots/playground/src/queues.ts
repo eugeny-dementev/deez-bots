@@ -1,7 +1,7 @@
+import { ytdlp } from '@libs/actions';
 import { QueueAction, util } from "async-queue-runner";
 import {
   CalcTimeLeft,
-  CheckVideoSize,
   CleanUpUrl,
   DeleteFile,
   DeleteLimitStatus,
@@ -9,7 +9,6 @@ import {
   ExtractVideoDimentions,
   FindFile,
   FindMainFile,
-  GetVideoFormatsListingCommand,
   Log,
   PreapreVideoDimentionsCommand,
   PrepareConvertCommand,
@@ -18,11 +17,11 @@ import {
   SetLimitStatus,
   UploadVideo,
 } from "./actions.js";
+import { homeDir, storageDir } from "./config.js";
 import { formatTime } from "./helpers.js";
 import { shortcut } from "./shortcuts.js";
-import { BotContext, VideoMetaContext, TimeLimitContext } from "./types.js";
+import { BotContext, TimeLimitContext, VideoMetaContext } from "./types.js";
 import { isValidURL } from "./validators.js";
-import { homeDir, storageDir } from "./config.js";
 
 export const shortHandlerQueue: () => QueueAction[] = () => [
   Log,
@@ -35,11 +34,7 @@ export const shortHandlerQueue: () => QueueAction[] = () => [
         then: [
           shortcut.notify('Message received'),
           CleanUpUrl,
-          GetVideoFormatsListingCommand,
-          ExecuteCommand,
-          CheckVideoSize,
-          Log,
-          util.if<VideoMetaContext>(({ videoMeta }) => videoMeta.length > 0, {
+          ytdlp.sizes({
             then: [
               shortcut.extend({ title: true }),
               shortcut.extend({ destDir: storageDir }),
@@ -90,7 +85,7 @@ export const shortHandlerQueue: () => QueueAction[] = () => [
                 ],
               }),
             ],
-            else: [
+            error: [
               shortcut.notify('No video to download'),
             ],
           }),

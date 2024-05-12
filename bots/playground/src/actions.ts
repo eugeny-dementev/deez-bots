@@ -91,41 +91,6 @@ export class CleanUpUrl extends Action<BotContext> {
   }
 }
 
-export class GetVideoFormatsListingCommand extends Action<BotContext> {
-  async execute({ url, cookiesPath, extend }: BotContext & QueueContext): Promise<void> {
-    const commandArr: string[] = [];
-
-    commandArr.push(`yt-dlp`)
-    commandArr.push('--list-formats')
-    commandArr.push(`--cookies ${cookiesPath}`);
-    commandArr.push(url);
-
-    const command = commandArr.join(' ');
-
-    extend({ command });
-  }
-}
-
-export class CheckVideoSize extends Action<CommandContext> {
-  async execute({ stdout, extend }: CommandContext & QueueContext): Promise<void> {
-    let videoMeta: ReturnType<typeof parseFormatsListing> = [];
-
-    try {
-      const metas = parseFormatsListing(stdout);
-
-      if (Array.isArray(metas) && metas.length > 0)
-
-      videoMeta = metas;
-
-    } catch (e) {
-      console.error(e);
-      console.log(stdout);
-    }
-
-    extend({ videoMeta });
-  }
-}
-
 export class PrepareYtDlpCommand extends Action<BotContext> {
   async execute({ url, destDir, cookiesPath, extend, userId, destFileName }: BotContext & QueueContext & { destDir: string }): Promise<void> {
     if (!destDir) throw Error('No destDir specified');
