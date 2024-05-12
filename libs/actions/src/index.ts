@@ -1,1 +1,1 @@
-export { ytdlp } from './lib/yt-dlp.js';
+export { ytdlp, YtDlpSizesOutput } from './lib/yt-dlp.js';

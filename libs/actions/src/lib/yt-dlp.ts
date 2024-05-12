@@ -16,6 +16,10 @@ export type FormatListing = {
   size: number,
 }
 
+export type YtDlpSizesOutput = {
+  sizes: FormatListing[],
+}
+
 export type SizesParams = {
   then: QueueAction[],
   error: QueueAction[],
