@@ -39,7 +39,7 @@ export const ytdlp = {
           context.extend({ sizes } as YtDlpSizesOutput);
           context.push(params.then);
         } catch (stderr: unknown) {
-          const message = parseError(stderr as string);
+          const message = parseYtDlpError(stderr as string);
           const error = new Error(message);
           context.logger.error(error);
           context.terr?.(error);
@@ -64,7 +64,7 @@ export function parseFormatsListing(str: string): FormatListing[] {
     .reverse();
 }
 
-export function parseError(str: string): string {
+export function parseYtDlpError(str: string): string {
   const lines = str.split('\n')
     .filter(line => Boolean(line))
     .filter(line => line.toLowerCase().includes('error'))

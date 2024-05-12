@@ -1,4 +1,4 @@
-import { parseError, parseFormatsListing } from './yt-dlp.js';
+import { parseYtDlpError, parseFormatsListing } from './yt-dlp.js';
 
 describe('libs/actions', () => {
   describe('yt-dlp', () => {
@@ -7,7 +7,7 @@ describe('libs/actions', () => {
         const stderr = `
           ERROR: [some] someId: Unable to some some
         `
-        expect(parseError(stderr)).toEqual('[some] someId: Unable to some some');
+        expect(parseYtDlpError(stderr)).toEqual('[some] someId: Unable to some some');
       });
     });
 

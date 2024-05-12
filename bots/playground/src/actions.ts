@@ -1,3 +1,5 @@
+import { LoggerOutput, NotificationsOutput, parseYtDlpError } from '@libs/actions';
+import { exec, prepare } from '@libs/command';
 import { Action, QueueContext } from 'async-queue-runner';
 import del from 'del';
 import expendTilda from 'expand-tilde';
@@ -67,25 +69,36 @@ export class CleanUpUrl extends Action<BotContext> {
   }
 }
 
-export class PrepareYtDlpCommand extends Action<BotContext> {
-  async execute({ url, destDir, cookiesPath, extend, userId, destFileName }: BotContext & QueueContext & { destDir: string }): Promise<void> {
+export class DownloadVideo extends Action<BotContext & NotificationsOutput> {
+  async execute({ url, destDir, cookiesPath, userId, destFileName, terr, tlog }: BotContext & NotificationsOutput & QueueContext & { destDir: string }): Promise<void> {
     if (!destDir) throw Error('No destDir specified');
 
     const userHomeDir = path.join(destDir, destDir == homeDir ? String(userId) : '');
 
-    const commandArr: string[] = [];
+    const command = prepare('yt-dlp')
+      .add(`-S "res:${destDir === storageDir ? '1080' : '480'}"`)
+      .add(`--paths home:${userHomeDir}`)
+      .add(`--paths temp:${swapDir}`)
+      .add(`--cookies ${cookiesPath}`, Boolean(cookiesPath))
+      .add(`--output "${destFileName}.%(ext)s"`, destDir === homeDir)
+      .add(`--output "${destFileName}.%(title)s.%(ext)s"`, destDir !== homeDir)
+      .add(url)
+      .toString();
 
-    commandArr.push(`yt-dlp -S "res:${destDir === storageDir ? '1080' : '480'}"`)
-    commandArr.push(`--paths home:${userHomeDir}`)
-    commandArr.push(`--paths temp:${swapDir}`);
-    commandArr.push(`--cookies ${cookiesPath}`);
-    if (destDir === homeDir) commandArr.push(`--output "${destFileName}.%(ext)s"`);
-    else commandArr.push(`--output "${destFileName}.%(title)s.%(ext)s"`);
-    commandArr.push(url);
+    try {
+      await exec(command);
+      tlog('Video downloaded');
+    } catch (stderr: unknown) {
+      if (typeof stderr === 'string') {
+        const error = parseYtDlpError(stderr);
+        terr(new Error(error));
+      } else {
+        terr(stderr as Error);
+      }
 
-    const command = commandArr.join(' ');
-
-    extend({ command });
+      tlog('Failed to download video');
+      throw stderr
+    }
   }
 }
 
@@ -133,20 +146,39 @@ export class FindFile extends Action<BotContext> {
   }
 }
 
-export class PrepareConvertCommand extends Action<LastFileContext> {
-  async execute({ lastFile, extend }: LastFileContext & QueueContext): Promise<void> {
+export class ConvertVideo extends Action<LastFileContext & BotContext & NotificationsOutput & LoggerOutput> {
+  async execute({ lastFile, url, terr, tlog }: LastFileContext & BotContext & NotificationsOutput & LoggerOutput & QueueContext): Promise<void> {
     const fileData = path.parse(lastFile);
-    const newFileName = `new_${fileData.name}`;
+    const newFileName = `${fileData.name}.new`;
     const newFilePath = path.join(fileData.dir, `${newFileName}.mp4`);
-    // ffmpeg -i ./YKUNMpHk_cs.any ./new_YKUNMpHk_cs.mp4
-    const command = `ffmpeg -i ${lastFile} -c:v libx264 -crf 28 -preset veryslow -c:a copy ${newFilePath}`;
 
-    extend({ command, destFileName: newFileName });
+    const command = prepare('ffmpeg')
+      .add(`-i ${lastFile}`)
+      .add('-c:v libx264')
+      .add('-crf 28')
+      .add('-preset veryslow')
+      .add('-c:a copy')
+      .add(newFilePath)
+      .toString();
+
+    try {
+      await exec(command);
+      tlog('Video ready for uploading');
+    } catch (stderr: unknown) {
+      if (typeof stderr === 'string') {
+        terr('Failed to convert video ' + url);
+      } else {
+        terr(stderr as Error);
+      }
+
+      tlog('Failed to download video');
+      throw stderr
+    }
   }
 }
 
-export class PreapreVideoDimentionsCommand extends Action<LastFileContext> {
-  async execute({ lastFile, extend }: LastFileContext & QueueContext): Promise<void> {
+export class ExtractVideoDimentions extends Action<LastFileContext & NotificationsOutput & LoggerOutput> {
+  async execute({ lastFile, extend, terr, tlog }: LastFileContext & NotificationsOutput & LoggerOutput & QueueContext): Promise<void> {
     // command
     // ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1 .\YKUNMpHk_cs.mp4
     //
@@ -155,53 +187,29 @@ export class PreapreVideoDimentionsCommand extends Action<LastFileContext> {
     // height=1280
     const command = `ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1 ${lastFile}`
 
-    extend({ command });
-  }
-}
+    try {
+      const stdout = await exec(command);
+      const { width, height } = stdout
+        .trim()
+        .split('\n').map(s => s.trim())
+        .map((str: string): string[] => str.split('=').map(s => s.trim()))
+        .reduce<VideoDimensions>((obj: VideoDimensions, pair: string[]): VideoDimensions => {
+          const field = pair[0] as 'width' | 'height';
+          const value = Number(pair[1]);
+          obj[field] = value;
 
-export class ExtractVideoDimentions extends Action<CommandContext> {
-  async execute({ stdout, extend }: CommandContext & QueueContext): Promise<void> {
-    const { width, height } = stdout
-      .trim()
-      .split('\n').map(s => s.trim())
-      .map((str: string): string[] => str.split('=').map(s => s.trim()))
-      .reduce<VideoDimensions>((obj: VideoDimensions, pair: string[]): VideoDimensions => {
-        const field = pair[0] as 'width' | 'height';
-        const value = Number(pair[1]);
-        obj[field] = value;
+          return obj;
+        }, {} as VideoDimensions);
 
-        return obj;
-      }, {} as VideoDimensions);
-
-    extend({ width, height });
-  }
-}
-
-export class ExecuteCommand extends Action<CommandContext> {
-  delay: number = 1000;
-
-  async execute(context: CommandContext & QueueContext): Promise<void> {
-    return new Promise((res, rej) => {
-      if (!context.command) {
-        rej('Command not found in the context');
-
-        return;
+      extend({ width, height });
+    } catch (e: unknown) {
+      if (typeof e === 'string') {
+        tlog('Failed to extract video dimensions');
+        terr(e);
+      } else {
+        terr(e as Error);
       }
-
-      shelljs.exec(context.command!, { async: true }, (code, stdout, stderr) => {
-        delete context.command;
-
-        if (code === 0) {
-          res();
-
-          context.extend({ stdout });
-
-          return;
-        }
-
-        rej(stderr.toString());
-      });
-    });
+    }
   }
 }
 
@@ -211,11 +219,18 @@ export class DeleteFile extends Action<LastFileContext> {
   }
 }
 
-export class UploadVideo extends Action<BotContext & VideoDimensionsContext & LastFileContext> {
-  async execute({ lastFile, bot, width, height, channelId }: VideoDimensionsContext & BotContext & LastFileContext & QueueContext): Promise<void> {
+export class UploadVideo extends Action<BotContext & NotificationsOutput & VideoDimensionsContext & LastFileContext> {
+  async execute({ lastFile, bot, width, height, channelId, terr, tlog }: VideoDimensionsContext & BotContext & NotificationsOutput & LastFileContext & QueueContext): Promise<void> {
     const videoBuffer = await fsPromises.readFile(lastFile);
 
-    await bot.telegram.sendVideo(channelId!, { source: videoBuffer }, { width, height });
+    try {
+      await bot.telegram.sendVideo(channelId!, { source: videoBuffer }, { width, height });
+    } catch (e) {
+      terr(e as Error);
+      tlog('Failed to upload video to telegram');
+
+      throw e;
+    }
   }
 }
 
