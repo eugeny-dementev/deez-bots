@@ -1,5 +1,6 @@
 import { exec, prepare } from '@libs/command';
 import { Action, QueueAction, QueueContext } from "async-queue-runner";
+import { NotificationsOutput } from './notifications';
 
 export type YtDlpSizesContext = {
   url: string,
@@ -26,8 +27,8 @@ export type SizesParams = {
 };
 export const ytdlp = {
   sizes(params: SizesParams) {
-    class YtDlpSizes extends Action<YtDlpSizesContext> {
-      async execute(context: YtDlpSizesContext & QueueContext): Promise<void> {
+    class YtDlpSizes extends Action<YtDlpSizesContext & Partial<NotificationsOutput>> {
+      async execute(context: YtDlpSizesContext & Partial<NotificationsOutput> & QueueContext): Promise<void> {
         const command = prepare('yt-dlp')
           .add('--no-download')
           .add('--list-formats')
@@ -43,8 +44,9 @@ export const ytdlp = {
           context.push(params.then);
         } catch (stderr: unknown) {
           const message = parseError(stderr as string);
-          context.logger.error(new Error(message));
-          context.extend({ errMsg: message });
+          const error = new Error(message);
+          context.logger.error(error);
+          context.terr?.(error);
           context.push(params.error);
         }
       }
