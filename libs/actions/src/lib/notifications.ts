@@ -8,7 +8,7 @@ export type NotificationsContext = {
 }
 
 export type NotificationsOutput = {
-  tlog: (msg: string) => Promise<void>
+  tlog: (msg: string, fresh?: boolean) => Promise<void>
 }
 
 export class InjectNotifications extends Action<NotificationsContext> {
@@ -33,12 +33,15 @@ export class InjectNotifications extends Action<NotificationsContext> {
   }
 }
 
+export type TNotificationMessage<C> = (context: C) => Promise<string> | string;
 export type IActionClass = new (...args: any[]) => IAction;
 export const notifications = {
-  notify: (msg: string): IActionClass => class TGNotification extends Action<NotificationsOutput> {
+  tlog: <C = null>(msg: string | TNotificationMessage<C>, fresh?: boolean): IActionClass => class TGNotification extends Action<NotificationsOutput> {
     async execute(context: NotificationsOutput & QueueContext): Promise<void> {
-      await context.tlog(msg);
+      if (typeof msg === 'function') {
+        msg = await (msg as TNotificationMessage<C>)(context as C);
+      }
+      await context.tlog(msg, fresh);
     }
   },
-
 }
