@@ -1,7 +1,7 @@
 {
-  "name": "yt-dlp",
+  "name": "playground",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "bots/yt-dlp/src",
+  "sourceRoot": "bots/playground/src",
   "projectType": "application",
   "tags": [],
   "targets": {
@@ -11,12 +11,12 @@
       "defaultConfiguration": "production",
       "options": {
         "platform": "node",
-        "outputPath": "dist/bots/yt-dlp",
+        "outputPath": "dist/bots/playground",
         "format": ["cjs"],
         "bundle": false,
-        "main": "bots/yt-dlp/src/main.ts",
-        "tsConfig": "bots/yt-dlp/tsconfig.app.json",
-        "assets": ["bots/yt-dlp/src/assets"],
+        "main": "bots/playground/src/main.ts",
+        "tsConfig": "bots/playground/tsconfig.app.json",
+        "assets": ["bots/playground/src/assets"],
         "generatePackageJson": true,
         "buildableProjectDepsInPackageJsonType": "dependencies",
         "esbuildOptions": {
@@ -42,23 +42,16 @@
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
       "options": {
-        "buildTarget": "yt-dlp:build"
+        "buildTarget": "playground:build"
       },
       "configurations": {
         "development": {
-          "buildTarget": "yt-dlp:build:development"
+          "buildTarget": "playground:build:development"
         },
         "production": {
-          "buildTarget": "yt-dlp:build:production"
+          "buildTarget": "playground:build:production"
         }
       }
-    },
-    "docker-build": {
-      "dependsOn": ["build", "docker-dl-build"],
-      "command": "docker build -f bots/yt-dlp/Dockerfile . -t yt-dlp-bot-image"
-    },
-    "docker-dl-build": {
-      "command": "docker build -f docker/dl.Dockerfile . -t utils/dl"
     }
   }
 }

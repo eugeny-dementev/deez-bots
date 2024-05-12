@@ -1,11 +1,11 @@
 /* eslint-disable */
 export default {
-  displayName: 'yt-dlp',
+  displayName: 'playground',
   extends: '../../jest.config.ts',
   testEnvironment: 'node',
   transform: {
     '^.+\\.[tj]s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
-  coverageDirectory: '../../coverage/bots/yt-dlp',
+  coverageDirectory: '../../coverage/bots/playground',
 };
