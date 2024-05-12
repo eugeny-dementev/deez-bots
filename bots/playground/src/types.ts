@@ -1,5 +1,4 @@
 import { Telegraf } from "telegraf"
-import { parseFormatsListing } from "./helpers.js";
 
 export type Timestampt = ReturnType<typeof Date.now>;
 
@@ -28,8 +27,6 @@ export type TimeLimitContext = {
   timeLimitLeft: number,
 }
 
-export type FContextMessage<C> = (context: C) => Promise<string> | string;
-
 export type CommandContext = {
   command?: string,
   stdout: string,
@@ -53,8 +50,3 @@ export type LinkType = 'reel' | 'short' | 'reddit'
 export type LinkTypeContext = {
   type: LinkType,
 };
-
-export type NotificationOptions = {
-  update: boolean
-  silent: boolean
-}

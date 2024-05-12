@@ -1,4 +1,4 @@
-import { ytdlp, YtDlpSizesOutput } from '@libs/actions';
+import { ytdlp, YtDlpSizesOutput, notifications, InjectNotifications } from '@libs/actions';
 import { QueueAction, util } from "async-queue-runner";
 import {
   CalcTimeLeft,
@@ -24,6 +24,7 @@ import { BotContext, TimeLimitContext } from "./types.js";
 import { isValidURL } from "./validators.js";
 
 export const shortHandlerQueue: () => QueueAction[] = () => [
+  InjectNotifications,
   Log,
   CalcTimeLeft,
   Log,
@@ -32,7 +33,7 @@ export const shortHandlerQueue: () => QueueAction[] = () => [
     then: [
       util.if<TimeLimitContext>(({ timeLimitLeft }) => timeLimitLeft === 0, {
         then: [
-          shortcut.notify('Message received'),
+          notifications.tlog('Message received'),
           CleanUpUrl,
           ytdlp.sizes({
             then: [
@@ -40,7 +41,7 @@ export const shortHandlerQueue: () => QueueAction[] = () => [
               shortcut.extend({ destDir: storageDir }),
               PrepareYtDlpCommand,
               Log,
-              shortcut.notify('Downloading full video to storage'),
+              notifications.tlog('Downloading full video to storage'),
               ExecuteCommand,
               FindMainFile,
               Log,
@@ -50,12 +51,12 @@ export const shortHandlerQueue: () => QueueAction[] = () => [
                   shortcut.extend({ destDir: homeDir }),
                   PrepareYtDlpCommand,
                   Log,
-                  shortcut.notify('Downloading video for telegram'),
+                  notifications.tlog('Downloading video for telegram'),
                   ExecuteCommand,
                   FindFile,
                   PrepareConvertCommand,
                   Log,
-                  shortcut.notify('Start compressing video for telegram'),
+                  notifications.tlog('Start compressing video for telegram'),
                   ExecuteCommand,
                   DeleteFile,
                   FindFile,
@@ -69,35 +70,36 @@ export const shortHandlerQueue: () => QueueAction[] = () => [
                     then: [
                       Log,
                       UploadVideo,
-                      shortcut.notify('Video uploaded to the telegram'),
+                      notifications.tlog('Video uploaded to the telegram'),
                     ],
                     else: [
                       DeleteLimitStatus,
                       SetChatIdToChannelId,
                       Log,
                       UploadVideo,
+                      notifications.tlog('Processing complete'),
                     ],
                   }),
                   DeleteFile,
                 ],
                 else: [
-                  shortcut.notify('Video is too big for telegram'),
+                  notifications.tlog('Video is too big for telegram'),
                 ],
               }),
             ],
             error: [
-              shortcut.notify('No video to download'),
+              notifications.tlog('No video to download'),
             ],
           }),
         ],
         else: [
           DeleteLimitStatus,
-          shortcut.notify('Invalid URL'),
+          notifications.tlog('Invalid URL'),
         ],
       }),
     ],
     else: [
-      shortcut.notify<TimeLimitContext>(({ timeLimitLeft }) => `${formatTime(timeLimitLeft)} left until next post`)
+      notifications.tlog<TimeLimitContext>(({ timeLimitLeft }) => `${formatTime(timeLimitLeft)} left until next post`)
     ],
   }),
 ];

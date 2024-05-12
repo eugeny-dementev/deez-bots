@@ -7,38 +7,14 @@ import path from 'path';
 import shelljs from 'shelljs';
 import { homeDir, storageDir, swapDir } from './config.js';
 import { USER_LIMITS } from './constants.js';
-import { omit, parseFormatsListing } from './helpers.js';
+import { omit } from './helpers.js';
 import {
   BotContext,
   CommandContext,
-  FContextMessage,
   LastFileContext,
-  NotificationOptions,
   VideoDimensions,
   VideoDimensionsContext,
 } from './types.js';
-
-export class Notification<C> extends Action<BotContext> {
-  message: string | FContextMessage<C & BotContext>;
-  options: NotificationOptions = { update: false, silent: true };
-
-  constructor(message: string | FContextMessage<C & BotContext>, options: Partial<NotificationOptions> = {}) {
-    super();
-
-    this.message = message;
-    Object.assign(this.options, options);
-  }
-
-  async execute(context: C & BotContext & QueueContext): Promise<void> {
-    const { chatId, bot } = context;
-
-    const msg: string = typeof this.message === 'function'
-      ? await this.message(context)
-      : this.message;
-
-    bot.telegram.sendMessage(chatId, msg, { disable_notification: this.options.silent });
-  }
-}
 
 export class CalcTimeLeft extends Action<BotContext> {
   async execute(context: BotContext & QueueContext): Promise<void> {

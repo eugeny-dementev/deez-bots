@@ -31,16 +31,3 @@ export function omit(obj: object, ...keys: string[]) {
   const entries = Object.entries(obj).filter(([key]) => !keys.includes(key));
   return Object.fromEntries(entries);
 }
-
-export function parseFormatsListing(str: string): { res: number, size: number }[] {
-  return str
-    .split('\n')
-    .filter(l => l.includes('MiB') && /[0-9]+x[0-9]+/.test(l))
-    .map((l: string) => ({
-      // @ts-ignore
-      res: Math.min(.../[0-9]+x[0-9]+/.exec(l)[0].split('x').map(v => parseInt(v))),
-      // @ts-ignore
-      size: parseFloat(/([0-9]+\.?[0-9]{2}?)MiB/.exec(l)[1]),
-    }))
-    .reverse();
-}
