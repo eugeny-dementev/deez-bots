@@ -1,15 +1,11 @@
 import { exec, prepare } from '@libs/command';
 import { Action, QueueAction, QueueContext } from "async-queue-runner";
 import { NotificationsOutput } from './notifications';
+import { Logger } from './logger';
 
 export type YtDlpSizesContext = {
   url: string,
-  logger: {
-    debug: (message: string) => void,
-    info: (message: string) => void,
-    warn: (message: string) => void,
-    error: (error: Error | string) => void,
-  }
+  logger: Logger
 }
 
 export type FormatListing = {
@@ -40,7 +36,7 @@ export const ytdlp = {
 
           const sizes = parseFormatsListing(stdout);
 
-          context.extend({ sizes });
+          context.extend({ sizes } as YtDlpSizesOutput);
           context.push(params.then);
         } catch (stderr: unknown) {
           const message = parseError(stderr as string);
