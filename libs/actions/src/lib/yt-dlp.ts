@@ -27,6 +27,7 @@ export const ytdlp = {
         const command = prepare('yt-dlp')
           .add('--no-download')
           .add('--list-formats')
+          .add(context.url)
           .toString();
 
         try {
