@@ -21,35 +21,30 @@ export type SizesParams = {
   then: QueueAction[],
   error: QueueAction[],
 };
-export const ytdlp = {
-  sizes(params: SizesParams) {
-    class YtDlpSizes extends Action<YtDlpSizesContext & Partial<NotificationsOutput>> {
-      async execute(context: YtDlpSizesContext & Partial<NotificationsOutput> & QueueContext): Promise<void> {
-        const command = prepare('yt-dlp')
-          .add('--no-download')
-          .add('--list-formats')
-          .add(context.url)
-          .toString();
 
-        try {
-          const stdout = await exec(command);
+export class YtDlpSizes extends Action<YtDlpSizesContext & Partial<NotificationsOutput>> {
+  async execute(context: YtDlpSizesContext & Partial<NotificationsOutput> & QueueContext): Promise<void> {
+    const command = prepare('yt-dlp')
+      .add('--no-download')
+      .add('--list-formats')
+      .add(context.url)
+      .toString();
 
-          const sizes = parseFormatsListing(stdout);
+    try {
+      const stdout = await exec(command);
 
-          context.extend({ sizes } as YtDlpSizesOutput);
-          context.push(params.then);
-        } catch (stderr: unknown) {
-          const message = parseYtDlpError(stderr as string);
-          const error = new Error(message);
-          context.logger.error(error);
-          context.terr?.(error);
-          context.push(params.error);
-        }
-      }
+      const sizes = parseFormatsListing(stdout);
+
+      context.extend({ sizes } as YtDlpSizesOutput);
+    } catch (stderr: unknown) {
+      const message = parseYtDlpError(stderr as string);
+      const error = new Error(message);
+      context.logger.error(error);
+      context.terr?.(error);
+
+      context.abort();
     }
-
-    return new YtDlpSizes();
-  },
+  }
 }
 
 export function parseFormatsListing(str: string): FormatListing[] {
