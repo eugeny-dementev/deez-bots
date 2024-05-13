@@ -101,9 +101,7 @@ bot.use((ctx) => {
   }
 })
 
-bot.launch(() => {
-  console.log('Bot launched');
-});
+bot.launch(() => console.log('Bot launched'));
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
