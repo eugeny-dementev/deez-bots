@@ -1,4 +1,4 @@
-import { InjectLogger, InjectNotifications, YtDlpSizesOutput, notifications, ytdlp } from '@libs/actions';
+import { InjectLogger, InjectNotifications, YtDlpSizes, YtDlpSizesOutput, notifications } from '@libs/actions';
 import { QueueAction, util } from "async-queue-runner";
 import {
   CalcTimeLeft,
@@ -31,44 +31,38 @@ export const shortHandlerQueue: () => QueueAction[] = () => [
         then: [
           notifications.tlog('Message received'),
           CleanUpUrl,
-          ytdlp.sizes({
+          YtDlpSizes,
+          shortcut.extend({ title: true, destDir: storageDir }),
+          notifications.tlog('Downloading full video to storage'),
+          DownloadVideo,
+          FindMainFile,
+          util.if<YtDlpSizesOutput>(({ sizes }) => Boolean(sizes.find(({ size, res }) => res >= 400 && res <= 500 && size < 50.0)), {
             then: [
-              shortcut.extend({ title: true, destDir: storageDir }),
-              notifications.tlog('Downloading full video to storage'),
+              shortcut.extend({ title: false, destDir: homeDir }),
+              notifications.tlog('Downloading video for telegram'),
               DownloadVideo,
-              FindMainFile,
-              util.if<YtDlpSizesOutput>(({ sizes }) => Boolean(sizes.find(({ size, res }) => res >= 400 && res <= 500 && size < 50.0)), {
+              FindFile,
+              notifications.tlog('Preparing video for telegram'),
+              ConvertVideo,
+              DeleteFile,
+              FindFile,
+              ExtractVideoDimentions,
+              util.if<BotContext>(({ channelId }) => Boolean(channelId), {
                 then: [
-                  shortcut.extend({ title: false, destDir: homeDir }),
-                  notifications.tlog('Downloading video for telegram'),
-                  DownloadVideo,
-                  FindFile,
-                  notifications.tlog('Preparing video for telegram'),
-                  ConvertVideo,
-                  DeleteFile,
-                  FindFile,
-                  ExtractVideoDimentions,
-                  util.if<BotContext>(({ channelId }) => Boolean(channelId), {
-                    then: [
-                      UploadVideo,
-                      notifications.tlog('Video uploaded to the telegram'),
-                    ],
-                    else: [
-                      DeleteLimitStatus,
-                      SetChatIdToChannelId,
-                      UploadVideo,
-                      notifications.tlog('Processing complete'),
-                    ],
-                  }),
-                  DeleteFile,
+                  UploadVideo,
+                  notifications.tlog('Video uploaded to the telegram'),
                 ],
                 else: [
-                  notifications.tlog('Video is too big for telegram'),
+                  DeleteLimitStatus,
+                  SetChatIdToChannelId,
+                  UploadVideo,
+                  notifications.tlog('Processing complete'),
                 ],
               }),
+              DeleteFile,
             ],
-            error: [
-              notifications.tlog('No video to download'),
+            else: [
+              notifications.tlog('Video is too big for telegram'),
             ],
           }),
         ],
