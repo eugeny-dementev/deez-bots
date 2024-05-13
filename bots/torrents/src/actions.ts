@@ -1,16 +1,16 @@
 import { Action, QueueContext } from 'async-queue-runner';
 import * as fs from 'fs';
 import * as path from "path";
-import { Page, chromium } from 'playwright';
+import { chromium } from 'playwright';
 import { promisify } from 'util';
+import { LoggerOutput, NotificationsOutput } from '@libs/actions';
 // @ts-ignore
 import parseTorrent from "parse-torrent";
 import { qBitTorrentHost } from './config.js';
-import { omit, sleep } from './helpers.js';
+import { closeBrowser, omit, openBrowser, sleep } from './helpers.js';
 import animeDubRecognizer from './multi-track.js';
 import { getDestination } from './torrent.js';
-import { LoggerOutput, NotificationsOutput } from '@libs/actions';
-import { BotContext, BrowserContext, PlaywrightContext, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
+import { BotContext, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
 
 type CompContext = BotContext & LoggerOutput & NotificationsOutput;
 
@@ -18,69 +18,54 @@ const readFile = promisify(fs.readFile);
 const unlink = promisify(fs.unlink);
 // const picPath = (picName: string) => path.resolve(process.cwd(), 'pics', `${picName}.png`);
 
-function getUserDataPath(): string {
-  return path.resolve(process.cwd(), 'userData');
-}
-export class OpenBrowser extends Action<PlaywrightContext> {
-  async execute(context: PlaywrightContext & QueueContext) {
-    const browser = await chromium.launchPersistentContext(getUserDataPath(), { headless: true });
-    const pages = browser.pages()
-
-    for (const page of pages) {
-      page.close();
-    }
-
-    const page: Page = await browser.newPage();
-
-    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
-    await page.setExtraHTTPHeaders({
-      'User-Agent': userAgent,
-      'Accept-Language': 'en-US,en;q=0.9'
-    });
-
-    context.extend({
-      browser, page,
-    });
-  }
-}
-
-export class CloseBrowser extends Action<CompContext & BrowserContext> {
-  async execute(context: CompContext & BrowserContext & QueueContext): Promise<void> {
-    const { browser } = context;
-
-    const pages = browser.pages();
-
-    for (const page of pages) {
-      page.close();
-    }
-
-    // @ts-ignore
-    delete context.browser;
-    // @ts-ignore
-    delete context.page;
-
-    await browser.close();
-  }
-}
-
-export class OpenQBitTorrent extends Action<CompContext & BrowserContext> {
-  async execute(context: CompContext & BrowserContext & QueueContext) {
-    const { page } = context;
-
-    await page.goto(qBitTorrentHost, {
-      waitUntil: 'networkidle',
-    });
-  }
-}
-
-export class AddUploadToQBitTorrent extends Action<CompContext & BrowserContext & QBitTorrentContext & CompContext> {
-  async execute(context: CompContext & BrowserContext & QBitTorrentContext & CompContext & QueueContext) {
-    const { page, dir, filePath } = context;
+export class AddUploadToQBitTorrent extends Action<CompContext & QBitTorrentContext> {
+  async execute(context: CompContext & QBitTorrentContext & QueueContext) {
+    const { dir, filePath } = context;
 
     try {
+      const { page, browser } = await openBrowser(chromium);
+
+      await page.goto(qBitTorrentHost, {
+        waitUntil: 'networkidle',
+      });
+
       const vs = page.viewportSize() || { width: 200, height: 200 };
       await page.mouse.move(vs.width, vs.height);
       await page.locator('#uploadButton').click(); // default scope
+
+      context.logger.info('Clicked to add new download task');
+      context.logger.info(`${filePath} => ${dir}`);
+
+      // popup is opened, but it exist in iFrame so need to switch scopes to it
+      const uploadPopupFrame = page.frameLocator('#uploadPage_iframe');
+
+      // search input[type=file] inside iframe locator
+      const chooseFileButton = uploadPopupFrame.locator('#uploadForm #fileselect');
+
+      // Start waiting for file chooser before clicking. Note no await.
+      const fileChooserPromise = page.waitForEvent('filechooser');
+      await chooseFileButton.click();
+      const fileChooser = await fileChooserPromise;
+      await fileChooser.setFiles(filePath);
+
+      context.logger.info('file choosing ' + filePath);
+      // alternative way to set files to input[type=file]
+      // await chooseFileButton.setInputFiles([filePath]);
+      context.logger.info('torrent file set');
+
+      // Set destination path
+      await uploadPopupFrame.locator('#savepath').fill(dir);
+      context.logger.info('destination set ' + dir);
+
+      // submit downloading and wait for popup to close
+      await Promise.all([
+        uploadPopupFrame.locator('button[type="submit"]').click(),
+        page.waitForSelector('#uploadPage_iframe', { state: "detached" }),
+      ])
+
+      context.tlog('Torrent file submitted');
+
+      await closeBrowser(browser);
     } catch (e) {
       context.logger.error(e as Error);
 
@@ -89,38 +74,6 @@ export class AddUploadToQBitTorrent extends Action<CompContext & BrowserContext 
 
       return context.abort();
     }
-
-    context.logger.info('Clicked to add new download task');
-    context.logger.info(`${filePath} => ${dir}`);
-
-    // popup is opened, but it exist in iFrame so need to switch scopes to it
-    const uploadPopupFrame = page.frameLocator('#uploadPage_iframe');
-
-    // search input[type=file] inside iframe locator
-    const chooseFileButton = uploadPopupFrame.locator('#uploadForm #fileselect');
-
-    // Start waiting for file chooser before clicking. Note no await.
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await chooseFileButton.click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles(filePath);
-
-    context.logger.info('file choosing ' + filePath);
-    // alternative way to set files to input[type=file]
-    // await chooseFileButton.setInputFiles([filePath]);
-    context.logger.info('torrent file set');
-
-    // Set destination path
-    await uploadPopupFrame.locator('#savepath').fill(dir);
-    context.logger.info('destination set ' + dir);
-
-    // submit downloading and wait for popup to close
-    await Promise.all([
-      uploadPopupFrame.locator('button[type="submit"]').click(),
-      page.waitForSelector('#uploadPage_iframe', { state: "detached" }),
-    ])
-
-    context.tlog('Torrent file submitted');
   }
 }
 
