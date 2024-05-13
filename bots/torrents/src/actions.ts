@@ -120,20 +120,7 @@ export class AddUploadToQBitTorrent extends Action<CompContext & BrowserContext 
       page.waitForSelector('#uploadPage_iframe', { state: "detached" }),
     ])
 
-    context.logger.info('torrent submitted');
-  }
-}
-
-export class ExtendContext extends Action<any> {
-  contextExtension: object | undefined
-  constructor(context: object) {
-    super();
-
-    this.contextExtension = context;
-  }
-
-  async execute(context: any) {
-    context.extend(this.contextExtension);
+    context.tlog('Torrent file submitted');
   }
 }
 

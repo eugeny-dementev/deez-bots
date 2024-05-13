@@ -4,7 +4,6 @@ import {
   CheckTorrentFile,
   CloseBrowser,
   DeleteFile,
-  ExtendContext,
   Log,
   MonitorDownloadingProgress,
   OpenBrowser,
@@ -12,15 +11,6 @@ import {
   TGPrintTorrentPattern
 } from './actions.js';
 import { BotContext } from './types.js';
-
-export function downloadRtrcrMovie(url: string, dir = 'D:\\Movies'): Action<any>[] {
-  return [
-    new ExtendContext({ url, dir }),
-    new OpenBrowser(),
-    new OpenQBitTorrent(),
-    new AddUploadToQBitTorrent(),
-  ];
-}
 
 export function botLoggerFactory(context: BotContext) {
   const { bot, chatId, adminId } = context;
