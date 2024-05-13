@@ -90,8 +90,8 @@ export class AddUploadToQBitTorrent extends Action<CompContext & BrowserContext 
       return context.abort();
     }
 
-    console.log('Clicked to add new download task');
-    console.log(`${filePath} => ${dir}`);
+    context.logger.info('Clicked to add new download task');
+    context.logger.info(`${filePath} => ${dir}`);
 
     // popup is opened, but it exist in iFrame so need to switch scopes to it
     const uploadPopupFrame = page.frameLocator('#uploadPage_iframe');
@@ -105,14 +105,14 @@ export class AddUploadToQBitTorrent extends Action<CompContext & BrowserContext 
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles(filePath);
 
-    console.log('file choosing ' + filePath);
+    context.logger.info('file choosing ' + filePath);
     // alternative way to set files to input[type=file]
     // await chooseFileButton.setInputFiles([filePath]);
-    console.log('torrent file set');
+    context.logger.info('torrent file set');
 
     // Set destination path
     await uploadPopupFrame.locator('#savepath').fill(dir);
-    console.log('destination set ' + dir);
+    context.logger.info('destination set ' + dir);
 
     // submit downloading and wait for popup to close
     await Promise.all([
@@ -120,7 +120,7 @@ export class AddUploadToQBitTorrent extends Action<CompContext & BrowserContext 
       page.waitForSelector('#uploadPage_iframe', { state: "detached" }),
     ])
 
-    console.log('torrent submitted');
+    context.logger.info('torrent submitted');
   }
 }
 
@@ -145,7 +145,7 @@ export class CheckTorrentFile extends Action<CompContext & QBitTorrentContext> {
     const torrent = await parseTorrent(file) as Torrent;
 
     if (torrent?.['files']) {
-      console.log(torrent.files);
+      context.logger.info(torrent.files);
     }
 
     let dir = '';
@@ -187,9 +187,9 @@ export class TGPrintTorrentPattern extends Action<CompContext & QBitTorrentConte
 
     const patterns = Array.from(dirs.keys()) as string[];
 
-    console.log(patterns);
-    console.log(Array.from(animeDubRecognizer(patterns)));
-    console.log('torrent:', torrent.name);
+    context.logger.debug(patterns);
+    context.logger.info(Array.from(animeDubRecognizer(patterns)));
+    context.logger.info('torrent:', torrent.name);
 
     extend({ torrentName: torrent.name });
   }
@@ -224,7 +224,7 @@ export class MonitorDownloadingProgress extends Action<CompContext & { torrentNa
           progressCache = status.progress;
         }
 
-        console.log('torrents', status);
+        context.logger.info('torrents', status);
         await sleep(5000);
       }
 
@@ -248,8 +248,8 @@ export class DeleteFile extends Action<CompContext> {
 
 export class Log extends Action<any> {
   async execute(context: any): Promise<void> {
-    // console.log(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name', 'stdout'));
-    console.log(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name', 'browser', 'page'));
+    // context.logger.info(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name', 'stdout'));
+    context.logger.info(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name', 'browser', 'page'));
   }
 }
 
@@ -312,8 +312,8 @@ export class DeleteLimitStatus extends Action<CompContext> {
 
 export class Log extends Action<any> {
   async execute(context: any): Promise<void> {
-    // console.log(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name', 'stdout'));
-    console.log(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name'));
+    // context.logger.info(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name', 'stdout'));
+    context.logger.info(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name'));
   }
 }
 
@@ -355,7 +355,7 @@ export class CheckVideoSize extends Action<CommandContext> {
 
     } catch (e) {
       console.error(e);
-      console.log(stdout);
+      context.logger.info(stdout);
     }
 
     extend({ videoMeta });
