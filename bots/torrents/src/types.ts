@@ -49,3 +49,11 @@ export type TorrentStatus = {
   content_ath: string,
   name: string,
 }
+
+export type MultiTrackContext = {
+  multiTrack: {
+    video: string,
+    audio?: string,
+    subs?: string,
+  }
+}
