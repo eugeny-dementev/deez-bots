@@ -1,22 +1,25 @@
 import { audioPriorities, subsPriorities } from "./config.js";
 import { nameCheckerFactory } from "./helpers.js";
+import { MultiTrack } from "./types.js";
 
-export default function animeDubRecognizer(patterns: string[]) {
+export default function animeDubRecognizer(patterns: string[]): MultiTrack {
   const videoPattern = getVideo(patterns);
   const audioPattern = getAudio(patterns);
   const subtitlePattern = getSubs(patterns);
 
-  return [
-    videoPattern,
-    audioPattern,
-    subtitlePattern,
-  ];
+  return {
+    video: videoPattern,
+    audio: audioPattern,
+    subs: subtitlePattern,
+  };
 }
 
-export function getVideo(patterns: string[]) {
-  return patterns.find((item) => {
+export function getVideo(patterns: string[]): string {
+  const mkv = patterns.find((item) => {
     return /\.mkv$/.test(item);
   })
+
+  return mkv || '';
 }
 
 export function getAudio(patterns: string[]) {

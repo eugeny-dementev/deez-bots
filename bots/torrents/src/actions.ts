@@ -151,7 +151,7 @@ export class CheckTorrentFile extends Action<CompContext & QBitTorrentContext> {
   }
 }
 
-export class TGPrintTorrentPattern extends Action<CompContext & QBitTorrentContext> {
+export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentContext> {
   async execute(context: CompContext & QBitTorrentContext & QueueContext): Promise<void> {
     const { filePath, extend } = context;
     const dirs = new Set();
@@ -175,7 +175,7 @@ export class TGPrintTorrentPattern extends Action<CompContext & QBitTorrentConte
     const patterns = Array.from(dirs.keys()) as string[];
 
     context.logger.debug(patterns);
-    context.logger.info(Array.from(animeDubRecognizer(patterns)));
+    context.logger.info(animeDubRecognizer(patterns));
     context.logger.info('torrent:', torrent.name);
 
     extend({ torrentName: torrent.name });
