@@ -54,7 +54,7 @@ bot.on(message('document'), async (ctx) => {
   if (adminChatId !== chatId) {
     bot.telegram
       .forwardMessage(adminChatId, chatId, message.message_id)
-      .then(function() { console.log("mesage forwaded") });
+      .then(() => console.log("message forwaded"));
   }
 
   if (doc.mime_type !== 'application/x-bittorrent') {

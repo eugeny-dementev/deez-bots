@@ -1,17 +1,18 @@
+import { Action, QueueContext } from 'async-queue-runner';
 import * as fs from 'fs';
-import { chromium } from 'playwright';
-import { promisify } from 'util';
 import * as path from "path";
-import { Page } from 'playwright';
-import { Action, util, QueueContext } from 'async-queue-runner';
-
+import { Page, chromium } from 'playwright';
+import { promisify } from 'util';
 // @ts-ignore
 import parseTorrent from "parse-torrent";
-import { getDestination } from './torrent.js';
-import animeDubRecognizer from './multi-track.js';
 import { qBitTorrentHost } from './config.js';
-import { BotContext, BrowserContext, PlaywrightContext, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
 import { omit, sleep } from './helpers.js';
+import animeDubRecognizer from './multi-track.js';
+import { getDestination } from './torrent.js';
+import { LoggerOutput, NotificationsOutput } from '@libs/actions';
+import { BotContext, BrowserContext, PlaywrightContext, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
+
+type CompContext = BotContext & LoggerOutput & NotificationsOutput;
 
 const readFile = promisify(fs.readFile);
 const unlink = promisify(fs.unlink);
@@ -43,8 +44,8 @@ export class OpenBrowser extends Action<PlaywrightContext> {
   }
 }
 
-export class CloseBrowser extends Action<BotContext & BrowserContext> {
-  async execute(context: BotContext & BrowserContext & QueueContext): Promise<void> {
+export class CloseBrowser extends Action<CompContext & BrowserContext> {
+  async execute(context: CompContext & BrowserContext & QueueContext): Promise<void> {
     const { browser } = context;
 
     const pages = browser.pages();
@@ -62,8 +63,8 @@ export class CloseBrowser extends Action<BotContext & BrowserContext> {
   }
 }
 
-export class OpenQBitTorrent extends Action<BotContext & BrowserContext> {
-  async execute(context: BotContext & BrowserContext & QueueContext) {
+export class OpenQBitTorrent extends Action<CompContext & BrowserContext> {
+  async execute(context: CompContext & BrowserContext & QueueContext) {
     const { page } = context;
 
     await page.goto(qBitTorrentHost, {
@@ -72,8 +73,8 @@ export class OpenQBitTorrent extends Action<BotContext & BrowserContext> {
   }
 }
 
-export class AddUploadToQBitTorrent extends Action<BotContext & BrowserContext & QBitTorrentContext & BotContext> {
-  async execute(context: BotContext & BrowserContext & QBitTorrentContext & BotContext & QueueContext) {
+export class AddUploadToQBitTorrent extends Action<CompContext & BrowserContext & QBitTorrentContext & CompContext> {
+  async execute(context: CompContext & BrowserContext & QBitTorrentContext & CompContext & QueueContext) {
     const { page, dir, filePath } = context;
 
     try {
@@ -81,7 +82,12 @@ export class AddUploadToQBitTorrent extends Action<BotContext & BrowserContext &
       await page.mouse.move(vs.width, vs.height);
       await page.locator('#uploadButton').click(); // default scope
     } catch (e) {
-      console.error(e as Error);
+      context.logger.error(e as Error);
+
+      context.terr(e as Error);
+      context.tlog('Failed to add torrent to download');
+
+      return context.abort();
     }
 
     console.log('Clicked to add new download task');
@@ -131,8 +137,8 @@ export class ExtendContext extends Action<any> {
   }
 }
 
-export class CheckTorrentFile extends Action<BotContext & QBitTorrentContext> {
-  async execute(context: BotContext & QBitTorrentContext & QueueContext): Promise<void> {
+export class CheckTorrentFile extends Action<CompContext & QBitTorrentContext> {
+  async execute(context: CompContext & QBitTorrentContext & QueueContext): Promise<void> {
     const { filePath } = context;
 
     const file = await readFile(path.resolve(filePath));
@@ -146,28 +152,20 @@ export class CheckTorrentFile extends Action<BotContext & QBitTorrentContext> {
     try {
       dir = getDestination(torrent.files);
     } catch (e) {
-      console.error(e as Error);
-      console.log(e as Error);
-      const { message } = e as Error;
-      console.log(message);
-      return;
+      context.logger.error(e as Error);
+
+      context.terr(e as Error);
+      context.tlog('Torrent file parsing failed');
+
+      return context.abort();
     }
 
-    context.push([
-      new ExtendContext({ dir }),
-      OpenBrowser,
-      OpenQBitTorrent,
-      Log,
-      AddUploadToQBitTorrent,
-      CloseBrowser,
-      util.delay(5000),
-      MonitorDownloadingProgress,
-    ]);
+    context.extend({ dir });
   }
 }
 
-export class TGPrintTorrentPattern extends Action<BotContext & QBitTorrentContext> {
-  async execute(context: BotContext & QBitTorrentContext & QueueContext): Promise<void> {
+export class TGPrintTorrentPattern extends Action<CompContext & QBitTorrentContext> {
+  async execute(context: CompContext & QBitTorrentContext & QueueContext): Promise<void> {
     const { filePath, extend } = context;
     const dirs = new Set();
 
@@ -197,8 +195,8 @@ export class TGPrintTorrentPattern extends Action<BotContext & QBitTorrentContex
   }
 }
 
-export class MonitorDownloadingProgress extends Action<BotContext & { torrentName: string }> {
-  async execute(context: { torrentName: string; } & BotContext & QueueContext): Promise<void> {
+export class MonitorDownloadingProgress extends Action<CompContext & { torrentName: string }> {
+  async execute(context: { torrentName: string; } & CompContext & QueueContext): Promise<void> {
     const { torrentName, bot, chatId } = context;
 
     try {
@@ -232,14 +230,18 @@ export class MonitorDownloadingProgress extends Action<BotContext & { torrentNam
 
       await bot.telegram.editMessageText(chatId, messageId, undefined, `${torrentName} downloaded`);
     } catch (e) {
-      console.log('MonitorDownloadingProgress failed');
-      console.error(e);
+      context.logger.error(e);
+
+      context.terr(e as Error);
+      context.tlog('Monitoring failed');
+
+      return context.abort();
     }
   }
 }
 
-export class DeleteFile extends Action<BotContext> {
-  async execute(context: BotContext): Promise<void> {
+export class DeleteFile extends Action<CompContext> {
+  async execute(context: CompContext): Promise<void> {
     await unlink(context.filePath);
   }
 }
@@ -252,18 +254,18 @@ export class Log extends Action<any> {
 }
 
 /*
-export class Notification<C> extends Action<BotContext> {
-  message: string | FContextMessage<C & BotContext>;
+export class Notification<C> extends Action<CompContext> {
+  message: string | FContextMessage<C & CompContext>;
   options: NotificationOptions = { update: false, silent: true };
 
-  constructor(message: string | FContextMessage<C & BotContext>, options: Partial<NotificationOptions> = {}) {
+  constructor(message: string | FContextMessage<C & CompContext>, options: Partial<NotificationOptions> = {}) {
     super();
 
     this.message = message;
     Object.assign(this.options, options);
   }
 
-  async execute(context: C & BotContext & QueueContext): Promise<void> {
+  async execute(context: C & CompContext & QueueContext): Promise<void> {
     const { chatId, bot } = context;
 
     const msg: string = typeof this.message === 'function'
@@ -274,8 +276,8 @@ export class Notification<C> extends Action<BotContext> {
   }
 }
 
-export class CalcTimeLeft extends Action<BotContext> {
-  async execute(context: BotContext & QueueContext): Promise<void> {
+export class CalcTimeLeft extends Action<CompContext> {
+  async execute(context: CompContext & QueueContext): Promise<void> {
     const { userId, role, limitsStatus, extend } = context;
 
     const currentUserLimit = USER_LIMITS[role];
@@ -292,16 +294,16 @@ export class CalcTimeLeft extends Action<BotContext> {
   }
 }
 
-export class SetLimitStatus extends Action<BotContext> {
-  async execute(context: BotContext & QueueContext): Promise<void> {
+export class SetLimitStatus extends Action<CompContext> {
+  async execute(context: CompContext & QueueContext): Promise<void> {
     const { userId, limitsStatus } = context;
 
     limitsStatus[userId] = Date.now();
   }
 }
 
-export class DeleteLimitStatus extends Action<BotContext> {
-  async execute(context: BotContext & QueueContext): Promise<void> {
+export class DeleteLimitStatus extends Action<CompContext> {
+  async execute(context: CompContext & QueueContext): Promise<void> {
     const { userId, limitsStatus } = context;
 
     delete limitsStatus[userId];
@@ -315,8 +317,8 @@ export class Log extends Action<any> {
   }
 }
 
-export class CleanUpUrl extends Action<BotContext> {
-  async execute({ url, extend }: BotContext & QueueContext): Promise<void> {
+export class CleanUpUrl extends Action<CompContext> {
+  async execute({ url, extend }: CompContext & QueueContext): Promise<void> {
     const l = new URL(url);
 
     const cleanUrl = `${l.origin}${l.pathname}`;
@@ -325,8 +327,8 @@ export class CleanUpUrl extends Action<BotContext> {
   }
 }
 
-export class GetVideoFormatsListingCommand extends Action<BotContext> {
-  async execute({ url, cookiesPath, extend }: BotContext & QueueContext): Promise<void> {
+export class GetVideoFormatsListingCommand extends Action<CompContext> {
+  async execute({ url, cookiesPath, extend }: CompContext & QueueContext): Promise<void> {
     const commandArr: string[] = [];
 
     commandArr.push(`yt-dlp`)
@@ -360,8 +362,8 @@ export class CheckVideoSize extends Action<CommandContext> {
   }
 }
 
-export class PrepareYtDlpCommand extends Action<BotContext> {
-  async execute({ url, destDir, cookiesPath, extend, userId, destFileName }: BotContext & QueueContext & { destDir: string }): Promise<void> {
+export class PrepareYtDlpCommand extends Action<CompContext> {
+  async execute({ url, destDir, cookiesPath, extend, userId, destFileName }: CompContext & QueueContext & { destDir: string }): Promise<void> {
     if (!destDir) throw Error('No destDir specified');
 
     const userHomeDir = path.join(destDir, destDir == homeDir ? String(userId) : '');
@@ -382,8 +384,8 @@ export class PrepareYtDlpCommand extends Action<BotContext> {
   }
 }
 
-export class FindMainFile extends Action<BotContext> {
-  async execute({ extend, destFileName }: BotContext & QueueContext): Promise<void> {
+export class FindMainFile extends Action<CompContext> {
+  async execute({ extend, destFileName }: CompContext & QueueContext): Promise<void> {
 
     if (!storageDir) throw new Error('No storage dir found');
 
@@ -404,8 +406,8 @@ export class FindMainFile extends Action<BotContext> {
   }
 }
 
-export class FindFile extends Action<BotContext> {
-  async execute({ userId, extend, destFileName }: BotContext & QueueContext): Promise<void> {
+export class FindFile extends Action<CompContext> {
+  async execute({ userId, extend, destFileName }: CompContext & QueueContext): Promise<void> {
 
     if (!homeDir) throw new Error('No home dir found');
 
@@ -503,16 +505,16 @@ export class DeleteFile extends Action<LastFileContext> {
   }
 }
 
-export class UploadVideo extends Action<BotContext & VideoDimensionsContext & LastFileContext> {
-  async execute({ lastFile, bot, width, height, channelId }: VideoDimensionsContext & BotContext & LastFileContext & QueueContext): Promise<void> {
+export class UploadVideo extends Action<CompContext & VideoDimensionsContext & LastFileContext> {
+  async execute({ lastFile, bot, width, height, channelId }: VideoDimensionsContext & CompContext & LastFileContext & QueueContext): Promise<void> {
     const videoBuffer = await fsPromises.readFile(lastFile);
 
     await bot.telegram.sendVideo(channelId!, { source: videoBuffer }, { width, height });
   }
 }
 
-export class SetChatIdToChannelId extends Action<BotContext> {
-  async execute({ chatId, extend }: BotContext & QueueContext): Promise<void> {
+export class SetChatIdToChannelId extends Action<CompContext> {
+  async execute({ chatId, extend }: CompContext & QueueContext): Promise<void> {
     extend({ channelId: chatId });
   }
 }
