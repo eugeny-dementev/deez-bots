@@ -10,10 +10,9 @@
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "Node16",
     "inlineSourceMap": true,
-    "baseUrl": "./",
     "paths": {
-      "@libs/command": ["libs/command/src/index.ts"],
-      "@libs/actions": ["libs/actions/src/index.ts"]
+      "@libs/command": ["./libs/command/src/index.ts"],
+      "@libs/actions": ["./libs/actions/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
