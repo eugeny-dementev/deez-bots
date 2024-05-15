@@ -1,16 +1,16 @@
+import { LoggerOutput, NotificationsOutput } from '@libs/actions';
 import { Action, QueueContext } from 'async-queue-runner';
 import * as fs from 'fs';
 import * as path from "path";
 import { chromium } from 'playwright';
 import { promisify } from 'util';
-import { LoggerOutput, NotificationsOutput } from '@libs/actions';
 // @ts-ignore
 import parseTorrent from "parse-torrent";
 import { qBitTorrentHost } from './config.js';
 import { closeBrowser, omit, openBrowser, sleep } from './helpers.js';
-import animeDubRecognizer from './multi-track.js';
+import multiTrackRecognizer from './multi-track.js';
 import { getDestination } from './torrent.js';
-import { BotContext, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
+import { BotContext, MultiTrack, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
 
 type CompContext = BotContext & LoggerOutput & NotificationsOutput;
 
@@ -104,16 +104,20 @@ export class CheckTorrentFile extends Action<CompContext & QBitTorrentContext> {
   }
 }
 
+type MultiTrackContext = { type: string, tracks: MultiTrack };
 export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentContext> {
   async execute(context: CompContext & QBitTorrentContext & QueueContext): Promise<void> {
     const { filePath, extend } = context;
     const dirs = new Set();
 
+    context.logger.info('Parsing torrent file ' + filePath);
     const file = await readFile(path.resolve(filePath));
     const torrent = await parseTorrent(file) as Torrent;
 
     for (const file of torrent.files) {
-      const { path: filePath } = file;
+      let { path: filePath } = file;
+
+      filePath = path.normalize(filePath).replace(/\\/g, '/' );
 
       const parts = filePath.split('/');
 
@@ -126,12 +130,16 @@ export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentConte
     }
 
     const patterns = Array.from(dirs.keys()) as string[];
-
     context.logger.debug(patterns);
-    context.logger.info(animeDubRecognizer(patterns));
+
+    const tracks = multiTrackRecognizer(patterns);
     context.logger.info('torrent:', torrent.name);
 
     extend({ torrentName: torrent.name });
+
+    if (patterns.filter(p => Boolean(p)).length > 1) {
+      extend({ dir: 'D:\\RAW TV Shows', type: 'multi-track', tracks } as MultiTrackContext);
+    }
   }
 }
 
