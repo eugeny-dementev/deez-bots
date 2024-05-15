@@ -1,5 +1,7 @@
+import fs from "fs/promises";
+import { F_OK } from "node:constants";
 import path from "path";
-import { BrowserType, BrowserContext, Page } from "playwright";
+import { BrowserContext, BrowserType, Page } from "playwright";
 
 export function nameCheckerFactory(name: string) {
   const re = new RegExp(name, 'i');
@@ -62,4 +64,13 @@ export async function closeBrowser(browser: BrowserContext): Promise<void> {
   }
 
   await browser.close();
+}
+
+export async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath, F_OK);
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
