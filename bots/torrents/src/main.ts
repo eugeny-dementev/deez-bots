@@ -1,13 +1,14 @@
+import { QueueRunner } from 'async-queue-runner';
+import expandTilde from 'expand-tilde';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Readable } from 'stream';
 import { finished } from 'stream/promises';
+import { ReadableStream } from 'stream/web';
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
-import { QueueRunner } from 'async-queue-runner';
-import { handleQBTFile } from './performances.js';
-import { ReadableStream } from 'stream/web';
 import { adminId, downloadsDir, moviesDir, publishersIds, token } from './config.js';
+import { handleQBTFile } from './performances.js';
 
 // Map of Russian to English transliteration
 const russianToEnglish = {
@@ -73,7 +74,9 @@ bot.on(message('document'), async (ctx) => {
 
   console.log({ fileName, englishFileName });
 
-  const destination = path.join(downloadsDir, englishFileName);
+  const absolutePathDownloadsDir = expandTilde(downloadsDir);
+
+  const destination = path.join(absolutePathDownloadsDir, englishFileName);
   const response = await fetch(fileUrl);
 
   const fileStream = fs.createWriteStream(destination);
