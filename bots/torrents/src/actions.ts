@@ -6,11 +6,13 @@ import { chromium } from 'playwright';
 import { promisify } from 'util';
 // @ts-ignore
 import parseTorrent from "parse-torrent";
-import { qBitTorrentHost } from './config.js';
-import { closeBrowser, omit, openBrowser, sleep } from './helpers.js';
+import { qBitTorrentHost, tvshowsDir } from './config.js';
+import { closeBrowser, fileExists, omit, openBrowser, sleep } from './helpers.js';
 import multiTrackRecognizer from './multi-track.js';
 import { getDestination } from './torrent.js';
-import { BotContext, MultiTrack, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
+import { BotContext, MultiTrack, MultiTrackContext, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
+import { glob } from 'glob';
+import { prepare, exec } from '@libs/command';
 
 type CompContext = BotContext & LoggerOutput & NotificationsOutput;
 
@@ -200,7 +202,33 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
     const destDir = path.join(tvshowsDir, torrentDirName);
 
     context.logger.info('Target directory for mkvmerge:', destDir);
+
+    let i = 1;
+    let size = filesMap.size;
+    for (const [fileName, files] of filesMap.entries()) {
+      const outputFile = path.join(destDir, `${fileName}.mkv`);
+      if (await fileExists(outputFile)) {
+        context.logger.info('File already converted:', fileName);
+        tlog(`Converting ${i} file out of ${size}`);
+        continue;
+      }
+
+      const command = prepare('mkvmerge')
+        .add(`--output "${outputFile}"`)
+        .add('--no-audio', Boolean(files.audio))
+        .add('--no-subtitles', Boolean(files.subs))
+        .add(`"${files.video}"`)
+        .add(`"${files.audio!}"`, Boolean(files.audio))
+        .add(`"${files.subs!}"`, Boolean(files.subs))
+        .toString();
+
+      context.logger.debug('Convert command added to the queue', command);
+
+      tlog(`Converting ${i} file out of ${size}`);
+      await exec(command);
     }
+
+    tlog('Convertion complete');
   }
 }
 
