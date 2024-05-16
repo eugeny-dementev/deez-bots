@@ -150,6 +150,56 @@ export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentConte
     }
   }
 }
+
+export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
+  async execute(context: BotContext & QBitTorrentContext & LoggerOutput & NotificationsOutput & MultiTrackContext & QueueContext): Promise<void> {
+    const { dir, tracks, torrentDirName, tlog, terr } = context;
+    const [mkvFiles, mkaFiles, assFiles] = await Promise.all([
+      glob.glob(path.join(dir, tracks.video), { windowsPathsNoEscape: true }).then(files => {
+        const map = new Map<string, string>();
+
+        for (const file of files) {
+          const fileName = path.parse(file).name;
+          map.set(fileName, file);
+        }
+
+        return map;
+      }),
+      glob.glob(path.join(dir, tracks.audio || ''), { windowsPathsNoEscape: true }).then(files => {
+        const map = new Map<string, string>();
+
+        for (const file of files) {
+          const fileName = path.parse(file).name;
+          map.set(fileName, file);
+        }
+
+        return map;
+      }),
+      glob.glob(path.join(dir, tracks.subs || ''), { windowsPathsNoEscape: true }).then(files => {
+        const map = new Map<string, string>();
+
+        for (const file of files) {
+          const fileName = path.parse(file).name;
+          map.set(fileName, file);
+        }
+
+        return map;
+      }),
+    ]);
+
+    const filesMap = new Map<string, MultiTrack>();
+
+    for (const fileName of mkaFiles.keys()) {
+      filesMap.set(fileName, {
+        video: mkvFiles.get(fileName)!,
+        audio: mkaFiles.get(fileName)!,
+        subs: assFiles.get(fileName)!,
+      });
+    }
+
+    const destDir = path.join(tvshowsDir, torrentDirName);
+
+    context.logger.info('Target directory for mkvmerge:', destDir);
     }
   }
 }
