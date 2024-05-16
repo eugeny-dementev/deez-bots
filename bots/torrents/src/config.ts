@@ -21,3 +21,5 @@ export const tvshowsDir = String(process.env.TV_SHOWS_DIR);
 
 export const audioPriorities = String(process.env.AUDIO_PRIORITIES).split(',');
 export const subsPriorities = String(process.env.SUBTITLE_PRIORITIES).split(',');
+
+export const isWin = process.platform === "win32";
