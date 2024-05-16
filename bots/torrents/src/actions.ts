@@ -130,7 +130,7 @@ export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentConte
 
       const fileName = parts.pop();
       torrentDirName = parts[0];
-      const fileDir = parts.join('\\');
+      const fileDir = path.join(...parts);
 
       const fileExt = path.parse(fileName || '').ext;
 
