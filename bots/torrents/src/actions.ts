@@ -114,15 +114,18 @@ export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentConte
     const file = await readFile(path.resolve(filePath));
     const torrent = await parseTorrent(file) as Torrent;
 
+    let torrentDirName = '';
+
     for (const file of torrent.files) {
       let { path: filePath } = file;
 
-      filePath = path.normalize(filePath).replace(/\\/g, '/' );
+      filePath = path.normalize(filePath).replace(/\\/g, '/');
 
       const parts = filePath.split('/');
 
       const fileName = parts.pop();
-      const fileDir = parts.join('/');
+      torrentDirName = parts[0];
+      const fileDir = parts.join();
 
       const fileExt = path.parse(fileName || '').ext;
 
@@ -135,10 +138,18 @@ export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentConte
     const tracks = multiTrackRecognizer(patterns);
     context.logger.info('torrent:', torrent.name);
 
+    tracks.video = tracks.video.replace(/\//g, '\\')
+    tracks.audio = tracks.audio?.replace(/\//g, '\\')
+    tracks.subs = tracks.subs?.replace(/\//g, '\\')
+    context.logger.info('torrent:', tracks);
+
     extend({ torrentName: torrent.name });
 
-    if (patterns.filter(p => Boolean(p)).length > 1) {
-      extend({ dir: 'D:\\RAW TV Shows', type: 'multi-track', tracks } as MultiTrackContext);
+    if (Object.values(tracks).filter(p => Boolean(p)).length > 1) {
+      extend({ dir: 'D:\\RAW TV Shows', type: 'multi-track', tracks, torrentDirName } as MultiTrackContext);
+    }
+  }
+}
     }
   }
 }
