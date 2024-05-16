@@ -80,8 +80,12 @@ export class AddUploadToQBitTorrent extends Action<CompContext & QBitTorrentCont
 }
 
 export class CheckTorrentFile extends Action<CompContext & QBitTorrentContext> {
-  async execute(context: CompContext & QBitTorrentContext & QueueContext): Promise<void> {
+  async execute(context: CompContext & Partial<MultiTrackContext> & QBitTorrentContext & QueueContext): Promise<void> {
     const { filePath } = context;
+
+    if (context.type === 'multi-track') {
+      return;
+    }
 
     const file = await readFile(path.resolve(filePath));
     const torrent = await parseTorrent(file) as Torrent;
@@ -106,7 +110,6 @@ export class CheckTorrentFile extends Action<CompContext & QBitTorrentContext> {
   }
 }
 
-type MultiTrackContext = { type: string, tracks: MultiTrack };
 export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentContext> {
   async execute(context: CompContext & QBitTorrentContext & QueueContext): Promise<void> {
     const { filePath, extend } = context;
