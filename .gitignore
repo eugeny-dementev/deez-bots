@@ -4,6 +4,7 @@
 dist
 tmp
 /out-tsc
+/userData
 
 # dependencies
 node_modules
