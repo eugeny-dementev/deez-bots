@@ -192,6 +192,8 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
       }),
     ]);
 
+    context.logger.debug({mkvFiles, mkaFiles, assFiles});
+
     const filesMap = new Map<string, MultiTrack>();
 
     for (const fileName of mkaFiles.keys()) {
@@ -208,6 +210,8 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
 
     let i = 1;
     let size = filesMap.size;
+    context.logger.debug(filesMap);
+    context.logger.info(`Found ${size} files to handle`);
     for (const [fileName, files] of filesMap.entries()) {
       const outputFile = path.join(destDir, `${fileName}.mkv`);
       if (await fileExists(outputFile)) {
