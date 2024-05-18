@@ -56,5 +56,7 @@ export type MultiTrack = {
   subs?: string,
 }
 export type MultiTrackContext = {
-  multiTrack: MultiTrack,
-}
+  type: string,
+  tracks: MultiTrack,
+  torrentDirName: string,
+};
