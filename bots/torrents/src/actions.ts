@@ -225,7 +225,9 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
         .add('--no-audio', Boolean(files.audio))
         .add('--no-subtitles', Boolean(files.subs))
         .add(`"${files.video}"`)
-        .add(`"${files.audio!}"`, Boolean(files.audio))
+        .add(`--language 0:ru "${files.audio!}"`, Boolean(files.audio))
+        .add(`--language 0:ru`, Boolean(files.subs))
+        .add(`--forced-display-flag 0:yes`, Boolean(files.subs) && String(files.subs).toLowerCase().includes('надписи'))
         .add(`"${files.subs!}"`, Boolean(files.subs))
         .toString();
 
