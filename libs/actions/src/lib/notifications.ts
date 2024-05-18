@@ -25,8 +25,8 @@ export class InjectNotifications extends Action<NotificationsContext> {
       }
 
       if (lastMsg != msg) {
-        await t.editMessageText(context.chatId, messageId, undefined, msg);
         lastMsg = msg;
+        await t.editMessageText(context.chatId, messageId, undefined, msg);
       }
     }
 
