@@ -199,8 +199,8 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
     for (const fileName of mkvFiles.keys()) {
       filesMap.set(fileName, {
         video: mkvFiles.get(fileName)!,
-        audio: mkaFiles.get(fileName)!,
-        subs: assFiles.get(fileName)!,
+        audio: mkaFiles.find((audioFileName) => audioFileName.includes(fileName))!,
+        subs: assFiles.find((subsFileName) => subsFileName.includes(fileName))!,
       });
     }
 
