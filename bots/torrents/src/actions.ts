@@ -123,9 +123,7 @@ export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentConte
     for (const file of torrent.files) {
       let { path: filePath } = file;
 
-      filePath = path.normalize(filePath).replace(/\\/g, '/');
-
-      const parts = filePath.split('/');
+      const parts = filePath.split(path.sep);
 
       const fileName = parts.pop();
       torrentDirName = parts[0];
