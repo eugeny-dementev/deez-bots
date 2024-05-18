@@ -1,24 +1,23 @@
 import { LoggerOutput, NotificationsOutput } from '@libs/actions';
+import { exec, prepare } from '@libs/command';
 import { Action, QueueContext } from 'async-queue-runner';
 import * as fs from 'fs';
+import { glob } from 'glob';
 import * as path from "path";
 import { chromium } from 'playwright';
 import { promisify } from 'util';
 // @ts-ignore
 import parseTorrent from "parse-torrent";
-import { qBitTorrentHost, tvshowsDir } from './config.js';
-import { closeBrowser, fileExists, omit, openBrowser, sleep } from './helpers.js';
+import { isWin, qBitTorrentHost, tvshowsDir } from './config.js';
+import { closeBrowser, fileExists, omit, openBrowser, sleep, wildifySquareBrackets } from './helpers.js';
 import multiTrackRecognizer from './multi-track.js';
 import { getDestination } from './torrent.js';
 import { BotContext, MultiTrack, MultiTrackContext, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
-import { glob } from 'glob';
-import { prepare, exec } from '@libs/command';
 
 type CompContext = BotContext & LoggerOutput & NotificationsOutput;
 
 const readFile = promisify(fs.readFile);
 const unlink = promisify(fs.unlink);
-// const picPath = (picName: string) => path.resolve(process.cwd(), 'pics', `${picName}.png`);
 
 export class AddUploadToQBitTorrent extends Action<CompContext & QBitTorrentContext> {
   async execute(context: CompContext & QBitTorrentContext & QueueContext) {
@@ -142,10 +141,6 @@ export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentConte
 
     const tracks = multiTrackRecognizer(patterns);
     context.logger.info('torrent:', torrent.name);
-
-    tracks.video = tracks.video.replace(/\//g, '\\')
-    tracks.audio = tracks.audio?.replace(/\//g, '\\')
-    tracks.subs = tracks.subs?.replace(/\//g, '\\')
     context.logger.info('torrent:', tracks);
 
     extend({ torrentName: torrent.name });
@@ -159,8 +154,27 @@ export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentConte
 export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
   async execute(context: BotContext & QBitTorrentContext & LoggerOutput & NotificationsOutput & MultiTrackContext & QueueContext): Promise<void> {
     const { dir, tracks, torrentDirName, tlog, terr } = context;
+    context.logger.info('ConvertMultiTrack dir:', dir);
+    let [
+      videosFullPattern,
+      audiosFullPattern,
+      subsFullPattern,
+    ] = [
+        path.join(dir, tracks.video),
+        path.join(dir, tracks.audio || ''),
+        path.join(dir, tracks.subs || '')
+      ];
+
+    if (isWin) {
+      videosFullPattern = wildifySquareBrackets(videosFullPattern);
+      audiosFullPattern = audiosFullPattern && wildifySquareBrackets(audiosFullPattern);
+      subsFullPattern = subsFullPattern && wildifySquareBrackets(subsFullPattern);
+    }
+
+    context.logger.debug({ videosFullPattern, audiosFullPattern, subsFullPattern });
+
     const [mkvFiles, mkaFiles, assFiles] = await Promise.all([
-      glob.glob(path.join(dir, tracks.video), { windowsPathsNoEscape: true }).then(files => {
+      glob.glob(videosFullPattern, { windowsPathsNoEscape: true }).then(files => {
         const map = new Map<string, string>();
 
         for (const file of files) {
@@ -170,26 +184,8 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
 
         return map;
       }),
-      glob.glob(path.join(dir, tracks.audio || ''), { windowsPathsNoEscape: true }).then(files => {
-        const map = new Map<string, string>();
-
-        for (const file of files) {
-          const fileName = path.parse(file).name;
-          map.set(fileName, file);
-        }
-
-        return map;
-      }),
-      glob.glob(path.join(dir, tracks.subs || ''), { windowsPathsNoEscape: true }).then(files => {
-        const map = new Map<string, string>();
-
-        for (const file of files) {
-          const fileName = path.parse(file).name;
-          map.set(fileName, file);
-        }
-
-        return map;
-      }),
+      glob.glob(audiosFullPattern, { windowsPathsNoEscape: true }),
+      glob.glob(subsFullPattern, { windowsPathsNoEscape: true }),
     ]);
 
     context.logger.debug({mkvFiles, mkaFiles, assFiles});
