@@ -17,7 +17,7 @@ export function getDestination(files: TFile[]): string {
     const name = parts.pop() as string
 
     if (!/\.mkv$/.test(name)) {
-      throw new Error('torrent should contain only *.mkv files');
+      throw new Error('Torrent should contain only *.mkv files');
     }
   }
 
