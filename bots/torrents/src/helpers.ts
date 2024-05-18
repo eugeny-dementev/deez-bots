@@ -74,3 +74,8 @@ export async function fileExists(filePath: string): Promise<boolean> {
     return false;
   }
 }
+
+export function wildifySquareBrackets(filePath: string) {
+    return filePath
+      .replace(/[\[\]]+/g, '*');
+}
