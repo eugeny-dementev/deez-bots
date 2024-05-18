@@ -120,6 +120,8 @@ export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentConte
 
     let torrentDirName = '';
 
+    context.logger.debug(torrent?.files);
+
     for (const file of torrent.files) {
       let { path: filePath } = file;
 
@@ -186,7 +188,7 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
       glob.glob(subsFullPattern, { windowsPathsNoEscape: true }),
     ]);
 
-    context.logger.debug({mkvFiles, mkaFiles, assFiles});
+    context.logger.debug({ mkvFiles, mkaFiles, assFiles });
 
     const filesMap = new Map<string, MultiTrack>();
 
