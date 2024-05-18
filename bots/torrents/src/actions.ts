@@ -233,7 +233,7 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
 
       context.logger.debug('Convert command added to the queue', command);
 
-      tlog(`Converting ${i} file out of ${size}`);
+      tlog(`Converting ${i++} file out of ${size}`);
       await exec(command);
     }
 
