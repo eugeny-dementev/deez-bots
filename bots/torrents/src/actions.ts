@@ -90,7 +90,7 @@ export class CheckTorrentFile extends Action<CompContext & QBitTorrentContext> {
     const torrent = await parseTorrent(file) as Torrent;
 
     if (torrent?.['files']) {
-      context.logger.info(torrent.files);
+      context.logger.info('Torrent file', { files:  torrent.files });
     }
 
     let qdir = '';
@@ -123,7 +123,7 @@ export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentConte
 
     let torrentDirName = '';
 
-    context.logger.debug(torrent?.files);
+    context.logger.debug('Torrent files', { files: torrent?.files.map(({ path }) => path) });
 
     for (const file of torrent.files) {
       let { path: filePath } = file;
@@ -140,11 +140,11 @@ export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentConte
     }
 
     const patterns = Array.from(dirs.keys()) as string[];
-    context.logger.debug(patterns);
+    context.logger.debug('Prepared glob patterns', { patterns });
 
     const tracks = multiTrackRecognizer(patterns);
-    context.logger.info('torrent:', torrent.name);
-    context.logger.info('torrent:', tracks);
+    context.logger.info('Torrent name', { name: torrent.name });
+    context.logger.info('Multi-track choosen patterns', { tracks });
 
     extend({ torrentName: torrent.name });
 
@@ -157,7 +157,7 @@ export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentConte
 export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
   async execute(context: BotContext & QBitTorrentContext & LoggerOutput & NotificationsOutput & MultiTrackContext & QueueContext): Promise<void> {
     const { fdir, tracks, torrentDirName, tlog, terr } = context;
-    context.logger.info('ConvertMultiTrack dir:', fdir);
+    context.logger.info(`ConvertMultiTrack dir: ${fdir}`);
     let [
       videosFullPattern,
       audiosFullPattern,
@@ -172,7 +172,7 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
     audiosFullPattern = audiosFullPattern && wildifySquareBrackets(audiosFullPattern);
     subsFullPattern = subsFullPattern && wildifySquareBrackets(subsFullPattern);
 
-    context.logger.debug({ videosFullPattern, audiosFullPattern, subsFullPattern });
+    context.logger.debug('Glob patterns', { videosFullPattern, audiosFullPattern, subsFullPattern });
 
     const [mkvFiles, mkaFiles, assFiles] = await Promise.all([
       glob.glob(videosFullPattern, { windowsPathsNoEscape: true }).then(files => {
@@ -189,7 +189,7 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
       glob.glob(subsFullPattern, { windowsPathsNoEscape: true }),
     ]);
 
-    context.logger.debug({ mkvFiles, mkaFiles, assFiles });
+    context.logger.debug('Glob files', { mkvFiles: Array.from(mkvFiles.values()), mkaFiles, assFiles });
 
     const filesMap = new Map<string, MultiTrack>();
 
@@ -212,16 +212,15 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
 
     const destDir = path.join(tvshowsDir, torrentDestFolder);
 
-    context.logger.info('Target directory for mkvmerge:', destDir);
+    context.logger.info(`Target directory for mkvmerge: ${destDir}`);
 
     let i = 1;
     let size = filesMap.size;
-    context.logger.debug(filesMap);
     context.logger.info(`Found ${size} files to handle`);
     for (const [fileName, files] of filesMap.entries()) {
       const outputFile = path.join(destDir, `${fileName}.mkv`);
       if (await fileExists(outputFile)) {
-        context.logger.info('File already converted:', fileName);
+        context.logger.info(`File already converted: ${fileName}`);
         tlog(`Converting ${i} file out of ${size}`);
         continue;
       }
@@ -237,7 +236,7 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
         .add(`"${files.subs!}"`, Boolean(files.subs))
         .toString();
 
-      context.logger.debug('Convert command added to the queue', command);
+      context.logger.debug(`Convert command added to the queue ${command}`);
 
       tlog(`Converting ${i++} file out of ${size}`);
       await exec(command);
@@ -282,7 +281,7 @@ export class MonitorDownloadingProgress extends Action<CompContext & { torrentNa
 
       await bot.telegram.editMessageText(chatId, messageId, undefined, `${torrentName} downloaded`);
     } catch (e) {
-      context.logger.error(e);
+      context.logger.error(e as Error);
 
       context.terr(e as Error);
       context.tlog('Monitoring failed');
@@ -300,7 +299,6 @@ export class DeleteFile extends Action<CompContext> {
 
 export class Log extends Action<any> {
   async execute(context: any): Promise<void> {
-    // context.logger.info(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name', 'stdout'));
-    context.logger.info(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name', 'browser', 'page'));
+    context.logger.info(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name', 'browser', 'page', 'tlog', 'terr', 'abort'));
   }
 }

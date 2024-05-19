@@ -7,7 +7,7 @@ export type LoggerContext = {
   ambience: string // place where logger method is used
 }
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
-export type Metadata = object
+export type Metadata = object;
 export type ErrorMeta = {
   message: string,
   stack: string,
@@ -64,12 +64,7 @@ export class Logger implements ILogger {
 
 export class InjectLogger extends Action<null> {
   async execute(context: QueueContext): Promise<void> {
-    const logger = {
-      error: console.error,
-      warn: console.warn,
-      info: console.log,
-      debug: console.log,
-    }
+    const logger = new Logger();
 
     context.extend({ logger } as LoggerOutput);
   }
