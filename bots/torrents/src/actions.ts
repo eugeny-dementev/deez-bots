@@ -8,7 +8,7 @@ import { chromium } from 'playwright';
 import { promisify } from 'util';
 // @ts-ignore
 import parseTorrent from "parse-torrent";
-import { isWin, qBitTorrentHost, tvshowsDir } from './config.js';
+import { isWin, qBitTorrentHost, qRawShowsDir, qTvshowsDir } from './config.js';
 import { closeBrowser, fileExists, omit, openBrowser, sleep, wildifySquareBrackets } from './helpers.js';
 import multiTrackRecognizer from './multi-track.js';
 import { getDestination } from './torrent.js';
@@ -146,7 +146,7 @@ export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentConte
     extend({ torrentName: torrent.name });
 
     if (Object.values(tracks).filter(p => Boolean(p)).length > 1) {
-      extend({ dir: 'D:\\RAW TV Shows', type: 'multi-track', tracks, torrentDirName } as MultiTrackContext);
+      extend({ dir: qRawShowsDir, type: 'multi-track', tracks, torrentDirName } as MultiTrackContext);
     }
   }
 }
