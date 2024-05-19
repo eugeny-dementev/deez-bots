@@ -1,4 +1,4 @@
-import { moviesDir, tvshowsDir } from "./config.js";
+import { qMoviesDir, qTvshowsDir } from "./config.js";
 import { TFile } from "./types.js";
 
 /**
@@ -22,8 +22,8 @@ export function getDestination(files: TFile[]): string {
   }
 
   if (files.length > 1) {
-    return tvshowsDir;
+    return qTvshowsDir;
   }
 
-  return moviesDir;
+  return qMoviesDir;
 }

@@ -7,7 +7,7 @@ import { finished } from 'stream/promises';
 import { ReadableStream } from 'stream/web';
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
-import { adminId, downloadsDir, moviesDir, publishersIds, token } from './config.js';
+import { adminId, downloadsDir, qMoviesDir, publishersIds, token } from './config.js';
 import { handleQBTFile } from './performances.js';
 
 // Map of Russian to English transliteration
@@ -83,7 +83,7 @@ bot.on(message('document'), async (ctx) => {
 
   await finished(Readable.fromWeb(response.body as ReadableStream).pipe(fileStream));
 
-  queue.add(handleQBTFile(), { filePath: destination, bot, adminId: adminChatId, chatId, dir: moviesDir });
+  queue.add(handleQBTFile(), { filePath: destination, bot, adminId: adminChatId, chatId, dir: qMoviesDir });
 });
 
 bot.use((ctx) => {
