@@ -9,7 +9,7 @@ import { promisify } from 'util';
 // @ts-ignore
 import parseTorrent from "parse-torrent";
 import { isWin, qBitTorrentHost, qRawShowsDir, qTvshowsDir } from './config.js';
-import { closeBrowser, fileExists, omit, openBrowser, sleep, wildifySquareBrackets } from './helpers.js';
+import { closeBrowser, fileExists, getDirMaps, omit, openBrowser, sleep, wildifySquareBrackets } from './helpers.js';
 import multiTrackRecognizer from './multi-track.js';
 import { getDestination } from './torrent.js';
 import { BotContext, MultiTrack, MultiTrackContext, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
@@ -200,7 +200,16 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
       });
     }
 
-    const destDir = path.join(tvshowsDir, torrentDirName);
+    let torrentDestFolder = torrentDirName;
+    const dirMaps = await getDirMaps();
+    for (const dirMap of dirMaps) {
+      if (torrentDirName.includes(dirMap.from)) {
+        torrentDestFolder = dirMap.to;
+        break;
+      }
+    }
+
+    const destDir = path.join(qTvshowsDir, torrentDestFolder);
 
     context.logger.info('Target directory for mkvmerge:', destDir);
 
