@@ -8,7 +8,7 @@ import { chromium } from 'playwright';
 import { promisify } from 'util';
 // @ts-ignore
 import parseTorrent from "parse-torrent";
-import { isWin, qBitTorrentHost, qRawShowsDir, qTvshowsDir, rawShowsDir } from './config.js';
+import { qBitTorrentHost, qRawShowsDir, rawShowsDir, tvshowsDir } from './config.js';
 import { closeBrowser, fileExists, getDirMaps, omit, openBrowser, sleep, wildifySquareBrackets } from './helpers.js';
 import multiTrackRecognizer from './multi-track.js';
 import { getDestination } from './torrent.js';
@@ -168,11 +168,9 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
         path.join(fdir, tracks.subs || '')
       ];
 
-    if (isWin) {
-      videosFullPattern = wildifySquareBrackets(videosFullPattern);
-      audiosFullPattern = audiosFullPattern && wildifySquareBrackets(audiosFullPattern);
-      subsFullPattern = subsFullPattern && wildifySquareBrackets(subsFullPattern);
-    }
+    videosFullPattern = wildifySquareBrackets(videosFullPattern);
+    audiosFullPattern = audiosFullPattern && wildifySquareBrackets(audiosFullPattern);
+    subsFullPattern = subsFullPattern && wildifySquareBrackets(subsFullPattern);
 
     context.logger.debug({ videosFullPattern, audiosFullPattern, subsFullPattern });
 
@@ -212,7 +210,7 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
       }
     }
 
-    const destDir = path.join(qTvshowsDir, torrentDestFolder);
+    const destDir = path.join(tvshowsDir, torrentDestFolder);
 
     context.logger.info('Target directory for mkvmerge:', destDir);
 
