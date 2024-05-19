@@ -9,6 +9,7 @@ import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
 import { adminId, downloadsDir, qMoviesDir, publishersIds, token } from './config.js';
 import { handleQBTFile } from './performances.js';
+import { loggerFactory } from '@libs/actions';
 
 // Map of Russian to English transliteration
 const russianToEnglish = {
@@ -20,7 +21,13 @@ const russianToEnglish = {
 };
 const russianLetters = new Set(Object.keys(russianToEnglish));
 
-const queue = new QueueRunner();
+const logger = loggerFactory();
+const queue = new QueueRunner({
+  logger,
+});
+
+logger.setContext('TorrentsBot');
+queue.addEndListener(() => logger.setContext('TorrentsBot'));
 
 const bot = new Telegraf(token);
 
