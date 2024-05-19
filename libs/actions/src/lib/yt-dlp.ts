@@ -1,11 +1,11 @@
 import { exec, prepare } from '@libs/command';
 import { Action, QueueAction, QueueContext } from "async-queue-runner";
 import { NotificationsOutput } from './notifications';
-import { Logger } from './logger';
+import { ILogger } from './logger';
 
 export type YtDlpSizesContext = {
   url: string,
-  logger: Logger
+  logger: ILogger
 }
 
 export type FormatListing = {
