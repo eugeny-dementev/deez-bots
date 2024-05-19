@@ -1,7 +1,10 @@
 import fs from "fs/promises";
 import { F_OK } from "node:constants";
 import path from "path";
+import { readFile } from "fs/promises";
 import { BrowserContext, BrowserType, Page } from "playwright";
+import { DirMap } from "./types";
+import { dirMaps } from "./config";
 
 export function nameCheckerFactory(name: string) {
   const re = new RegExp(name, 'i');
@@ -78,4 +81,10 @@ export async function fileExists(filePath: string): Promise<boolean> {
 export function wildifySquareBrackets(filePath: string) {
     return filePath
       .replace(/[\[\]]+/g, '*');
+}
+
+export async function getDirMaps(): Promise<DirMap[]> {
+  const buffer = await readFile(dirMaps);
+
+  return JSON.parse(buffer.toString()) as DirMap[];
 }

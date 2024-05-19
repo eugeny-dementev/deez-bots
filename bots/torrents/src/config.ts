@@ -16,6 +16,8 @@ if (!adminId) {
   throw new Error('No ADMIN_ID env provided');
 }
 
+export const dirMaps = String(process.env.DIR_MAPS);
+
 export const qMoviesDir = String(process.env.Q_MOVIES_DIR);
 export const qTvshowsDir = String(process.env.Q_TV_SHOWS_DIR);
 export const qRawShowsDir = String(process.env.Q_RAW_TV_SHOWS_DIR);

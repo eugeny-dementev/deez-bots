@@ -60,3 +60,8 @@ export type MultiTrackContext = {
   tracks: MultiTrack,
   torrentDirName: string,
 };
+
+export type DirMap = {
+  from: string,
+  to: string,
+}
