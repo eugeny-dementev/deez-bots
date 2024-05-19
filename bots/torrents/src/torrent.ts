@@ -1,10 +1,10 @@
-import { qMoviesDir, qTvshowsDir } from "./config.js";
-import { TFile } from "./types.js";
+import { moviesDir, qMoviesDir, qTvshowsDir, tvshowsDir } from "./config.js";
+import { DestContext, TFile } from "./types.js";
 
 /**
  * Check torrent files
  */
-export function getDestination(files: TFile[]): string {
+export function getDestination(files: TFile[]): DestContext {
   for (const file of files) {
     const { path } = file;
 
@@ -22,8 +22,14 @@ export function getDestination(files: TFile[]): string {
   }
 
   if (files.length > 1) {
-    return qTvshowsDir;
-  }
+    return {
+      qdir: qTvshowsDir,
+      fdir: tvshowsDir,
+    }
+  };
 
-  return qMoviesDir;
+  return {
+    qdir: qMoviesDir,
+    fdir: moviesDir,
+  };
 }

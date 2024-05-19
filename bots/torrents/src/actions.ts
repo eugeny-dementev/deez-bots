@@ -8,11 +8,11 @@ import { chromium } from 'playwright';
 import { promisify } from 'util';
 // @ts-ignore
 import parseTorrent from "parse-torrent";
-import { isWin, qBitTorrentHost, qRawShowsDir, qTvshowsDir } from './config.js';
+import { isWin, qBitTorrentHost, qRawShowsDir, qTvshowsDir, rawShowsDir } from './config.js';
 import { closeBrowser, fileExists, getDirMaps, omit, openBrowser, sleep, wildifySquareBrackets } from './helpers.js';
 import multiTrackRecognizer from './multi-track.js';
 import { getDestination } from './torrent.js';
-import { BotContext, MultiTrack, MultiTrackContext, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
+import { BotContext, DestContext, MultiTrack, MultiTrackContext, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
 
 type CompContext = BotContext & LoggerOutput & NotificationsOutput;
 
@@ -21,7 +21,7 @@ const unlink = promisify(fs.unlink);
 
 export class AddUploadToQBitTorrent extends Action<CompContext & QBitTorrentContext> {
   async execute(context: CompContext & QBitTorrentContext & QueueContext) {
-    const { dir, filePath } = context;
+    const { qdir, filePath } = context;
 
     try {
       const { page, browser } = await openBrowser(chromium);
@@ -35,7 +35,7 @@ export class AddUploadToQBitTorrent extends Action<CompContext & QBitTorrentCont
       await page.locator('#uploadButton').click(); // default scope
 
       context.logger.info('Clicked to add new download task');
-      context.logger.info(`${filePath} => ${dir}`);
+      context.logger.info(`${filePath} => ${qdir}`);
 
       // popup is opened, but it exist in iFrame so need to switch scopes to it
       const uploadPopupFrame = page.frameLocator('#uploadPage_iframe');
@@ -55,8 +55,8 @@ export class AddUploadToQBitTorrent extends Action<CompContext & QBitTorrentCont
       context.logger.info('torrent file set');
 
       // Set destination path
-      await uploadPopupFrame.locator('#savepath').fill(dir);
-      context.logger.info('destination set ' + dir);
+      await uploadPopupFrame.locator('#savepath').fill(qdir);
+      context.logger.info('destination set ' + qdir);
 
       // submit downloading and wait for popup to close
       await Promise.all([
@@ -93,9 +93,12 @@ export class CheckTorrentFile extends Action<CompContext & QBitTorrentContext> {
       context.logger.info(torrent.files);
     }
 
-    let dir = '';
+    let qdir = '';
+    let fdir = '';
     try {
-      dir = getDestination(torrent.files);
+      const destObj = getDestination(torrent.files);
+      qdir = destObj.qdir;
+      fdir = destObj.fdir;
     } catch (e) {
       context.logger.error(e as Error);
 
@@ -105,7 +108,7 @@ export class CheckTorrentFile extends Action<CompContext & QBitTorrentContext> {
       return context.abort();
     }
 
-    context.extend({ dir });
+    context.extend({ qdir, fdir } as DestContext);
   }
 }
 
@@ -146,23 +149,23 @@ export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentConte
     extend({ torrentName: torrent.name });
 
     if (Object.values(tracks).filter(p => Boolean(p)).length > 1) {
-      extend({ dir: qRawShowsDir, type: 'multi-track', tracks, torrentDirName } as MultiTrackContext);
+      extend({ qdir: qRawShowsDir, fdir: rawShowsDir, type: 'multi-track', tracks, torrentDirName } as MultiTrackContext & DestContext);
     }
   }
 }
 
 export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
   async execute(context: BotContext & QBitTorrentContext & LoggerOutput & NotificationsOutput & MultiTrackContext & QueueContext): Promise<void> {
-    const { dir, tracks, torrentDirName, tlog, terr } = context;
-    context.logger.info('ConvertMultiTrack dir:', dir);
+    const { fdir, tracks, torrentDirName, tlog, terr } = context;
+    context.logger.info('ConvertMultiTrack dir:', fdir);
     let [
       videosFullPattern,
       audiosFullPattern,
       subsFullPattern,
     ] = [
-        path.join(dir, tracks.video),
-        path.join(dir, tracks.audio || ''),
-        path.join(dir, tracks.subs || '')
+        path.join(fdir, tracks.video),
+        path.join(fdir, tracks.audio || ''),
+        path.join(fdir, tracks.subs || '')
       ];
 
     if (isWin) {

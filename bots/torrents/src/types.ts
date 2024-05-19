@@ -27,8 +27,7 @@ export type BrowserContext = {
   page: Page,
 };
 
-export type QBitTorrentContext = {
-  dir: string,
+export type QBitTorrentContext = DestContext & {
   torrentFilePath: string,
 };
 
@@ -64,4 +63,9 @@ export type MultiTrackContext = {
 export type DirMap = {
   from: string,
   to: string,
+}
+
+export type DestContext = {
+  qdir: string
+  fdir: string
 }
