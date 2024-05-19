@@ -3,9 +3,6 @@ import yamlifyObject from "yamlify-object";
 // @ts-ignore
 import colors from 'yamlify-object-colors';
 
-export type LoggerContext = {
-  ambience: string // place where logger method is used
-}
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 export type Metadata = object;
 export type ErrorMeta = {
@@ -20,7 +17,7 @@ export type ILogger = {
   info: LogMethod
   debug: LogMethod
 
-  setContext: (context: LoggerContext) => void
+  setContext: (context: string) => void
 }
 
 export type LoggerOutput = {
@@ -28,13 +25,11 @@ export type LoggerOutput = {
 }
 
 export class Logger implements ILogger {
-  context: LoggerContext = {
-    ambience: 'none',
-  };
+  context: string = 'none';
 
   private log(level: LogLevel, meta: Metadata & { message: string }) {
     const { message, ...rest } = meta;
-    console.log(`[${this.context.ambience}][${level}] - ${meta.message}\n${yamlifyObject(rest, { colors })}`);
+    console.log(`[${this.context}][${level}] - ${meta.message}\n${yamlifyObject(rest, { colors })}`);
   }
 
   error(error: Error, meta: Metadata = {}) {
@@ -50,7 +45,7 @@ export class Logger implements ILogger {
     this.log('debug', { message, ...meta });
   }
 
-  setContext(context: LoggerContext) {
+  setContext(context: string) {
     this.context = context;
   }
 
@@ -62,9 +57,17 @@ export class Logger implements ILogger {
   }
 }
 
+export function loggerFactory() {
+  return new Logger();
+}
+
 export class InjectLogger extends Action<null> {
-  async execute(context: QueueContext): Promise<void> {
-    const logger = new Logger();
+  async execute(context: QueueContext & Partial<LoggerOutput>): Promise<void> {
+    if (context.logger) {
+      return;
+    }
+
+    const logger = loggerFactory();
 
     context.extend({ logger } as LoggerOutput);
   }
