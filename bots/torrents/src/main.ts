@@ -46,7 +46,7 @@ bot.use(async (ctx, next) => {
 
 
   if (allowedUsers.has(userId)) await next();
-  else console.log('blocked user: ', {
+  else logger.warn('blocked user: ', {
     userId,
     user: ctx.message?.from.username,
   });
@@ -62,7 +62,7 @@ bot.on(message('document'), async (ctx) => {
   if (adminChatId !== chatId) {
     bot.telegram
       .forwardMessage(adminChatId, chatId, message.message_id)
-      .then(() => console.log("message forwaded"));
+      .then(() => logger.info("message forwaded"));
   }
 
   if (doc.mime_type !== 'application/x-bittorrent') {
@@ -79,7 +79,7 @@ bot.on(message('document'), async (ctx) => {
   const filenameObject = path.parse(fileName)
   const englishFileName = convertRussianToEnglish(filenameObject.name) + filenameObject.ext;
 
-  console.log({ fileName, englishFileName });
+  logger.info('New torrent request:', { fileName, englishFileName });
 
   const absolutePathDownloadsDir = expandTilde(downloadsDir);
 
@@ -103,15 +103,14 @@ bot.use((ctx) => {
     if (adminChatId !== chatId) {
       bot.telegram
         .forwardMessage(adminChatId, chatId, message.message_id)
-        .then(function() { console.log("mesage forwaded") });
+        .then(function() { logger.info("mesage forwaded") });
     }
   } catch (e) {
-    console.error(e);
-    console.log('ctx:', ctx);
+    logger.error(e as Error);
   }
 })
 
-bot.launch(() => console.log('Bot launched'));
+bot.launch(() => logger.info('Bot launched'));
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
