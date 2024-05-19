@@ -90,7 +90,7 @@ bot.on(message('document'), async (ctx) => {
 
   await finished(Readable.fromWeb(response.body as ReadableStream).pipe(fileStream));
 
-  queue.add(handleQBTFile(), { filePath: destination, bot, adminId: adminChatId, chatId, dir: qMoviesDir });
+  queue.add(handleQBTFile(), { filePath: destination, bot, logger, adminId: adminChatId, chatId, dir: qMoviesDir });
 });
 
 bot.use((ctx) => {
