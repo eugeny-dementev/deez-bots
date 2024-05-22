@@ -12,6 +12,23 @@ export type NotificationsOutput = {
   terr: (err: string | Error) => Promise<void>
 }
 
+export class MultiLineMessage {
+  lines: string[] = []
+
+  add(msg: string) {
+    this.lines.push(msg);
+  }
+
+  edit(msg: string) {
+    const index = this.lines.length - 1;
+    this.lines[index] = msg;
+  }
+
+  toString() {
+    return this.lines.join('\n');
+  }
+}
+
 export class InjectNotifications extends Action<NotificationsContext> {
   async execute(context: NotificationsContext & QueueContext): Promise<void> {
     const t = context.bot.telegram;
