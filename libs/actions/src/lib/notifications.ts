@@ -102,4 +102,12 @@ export const notifications = {
       await context.tlog(msg, fresh);
     }
   },
+  tadd: <C = null>(msg: string | TNotificationMessage<C>, fresh?: boolean): IActionClass => class TGNotification extends Action<NotificationsOutput> {
+    async execute(context: NotificationsOutput & QueueContext): Promise<void> {
+      if (typeof msg === 'function') {
+        msg = await (msg as TNotificationMessage<C>)(context as C);
+      }
+      await context.tadd(msg, fresh);
+    }
+  },
 }
