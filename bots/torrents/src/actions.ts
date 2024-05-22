@@ -8,7 +8,7 @@ import { chromium } from 'playwright';
 import { promisify } from 'util';
 // @ts-ignore
 import parseTorrent from "parse-torrent";
-import { qBitTorrentHost, qRawShowsDir, rawShowsDir, tvshowsDir } from './config.js';
+import { moviesDir, qBitTorrentHost, qRawShowsDir, rawShowsDir, tvshowsDir } from './config.js';
 import { closeBrowser, fileExists, getDirMaps, omit, openBrowser, sleep, wildifySquareBrackets } from './helpers.js';
 import multiTrackRecognizer from './multi-track.js';
 import { getDestination } from './torrent.js';
@@ -21,7 +21,7 @@ const unlink = promisify(fs.unlink);
 
 export class AddUploadToQBitTorrent extends Action<CompContext & QBitTorrentContext> {
   async execute(context: CompContext & QBitTorrentContext & QueueContext) {
-    const { qdir, filePath } = context;
+    const { qdir, filePath, tlog } = context;
 
     try {
       const { page, browser } = await openBrowser(chromium);
@@ -64,14 +64,14 @@ export class AddUploadToQBitTorrent extends Action<CompContext & QBitTorrentCont
         page.waitForSelector('#uploadPage_iframe', { state: "detached" }),
       ])
 
-      context.tlog('Torrent file submitted');
+      await tlog('Torrent file submitted');
 
       await closeBrowser(browser);
     } catch (e) {
       context.logger.error(e as Error);
 
       context.terr(e as Error);
-      context.tlog('Failed to add torrent to download');
+      await tlog('Failed to add torrent to download');
 
       return context.abort();
     }
@@ -80,7 +80,7 @@ export class AddUploadToQBitTorrent extends Action<CompContext & QBitTorrentCont
 
 export class CheckTorrentFile extends Action<CompContext & QBitTorrentContext> {
   async execute(context: CompContext & Partial<MultiTrackContext> & QBitTorrentContext & QueueContext): Promise<void> {
-    const { filePath } = context;
+    const { filePath, tlog } = context;
 
     if (context.type === 'multi-track') {
       return;
@@ -99,6 +99,14 @@ export class CheckTorrentFile extends Action<CompContext & QBitTorrentContext> {
       const destObj = getDestination(torrent.files);
       qdir = destObj.qdir;
       fdir = destObj.fdir;
+
+      if (fdir === tvshowsDir) {
+        await tlog('Torrent parsed, TV Show detected');
+      } else if (fdir === moviesDir) {
+        await tlog('Torrent parsed, Movie detected');
+      } else {
+        await tlog('Unsupported torrent detected');
+      }
     } catch (e) {
       context.logger.error(e as Error);
 
@@ -144,7 +152,7 @@ export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentConte
 
     const tracks = multiTrackRecognizer(patterns);
     context.logger.info('Torrent name', { name: torrent.name });
-    context.logger.info('Multi-track choosen patterns', { tracks });
+    context.logger.info('Multi-track chosen patterns', { tracks });
 
     extend({ torrentName: torrent.name });
 
@@ -215,13 +223,17 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
     context.logger.info(`Target directory for mkvmerge: ${destDir}`);
 
     let i = 1;
+    let newFiles = 0;
+    let oldFiles = 0;
     let size = filesMap.size;
     context.logger.info(`Found ${size} files to handle`);
     for (const [fileName, files] of filesMap.entries()) {
       const outputFile = path.join(destDir, `${fileName}.mkv`);
       if (await fileExists(outputFile)) {
         context.logger.info(`File already converted: ${fileName}`);
-        tlog(`Converting ${i} file out of ${size}`);
+        oldFiles++
+
+        await tlog(`Converting ${i} file out of ${size}`);
         continue;
       }
 
@@ -238,21 +250,21 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
 
       context.logger.debug(`Convert command added to the queue ${command}`);
 
-      tlog(`Converting ${i++} file out of ${size}`);
+      await tlog(`Converting ${i++} file out of ${size}`);
       await exec(command);
+
+      newFiles++;
     }
 
-    tlog('Convertion complete');
+    await tlog(`Conversion complete: ${oldFiles} old files and ${newFiles}`);
   }
 }
 
 export class MonitorDownloadingProgress extends Action<CompContext & { torrentName: string }> {
   async execute(context: { torrentName: string; } & CompContext & QueueContext): Promise<void> {
-    const { torrentName, bot, chatId } = context;
+    const { torrentName, tlog, terr, chatId } = context;
 
     try {
-      const mesage = await bot.telegram.sendMessage(chatId, 'Start downloading torrent ' + torrentName);
-      const messageId = mesage.message_id;
       let progressCache = '';
       let downloaded = false;
       while (!downloaded) {
@@ -271,7 +283,7 @@ export class MonitorDownloadingProgress extends Action<CompContext & { torrentNa
         };
 
         if (progressCache !== status.progress) {
-          await bot.telegram.editMessageText(chatId, messageId, undefined, `${torrentName} progress: ${status.progress}%`);
+          await tlog(`${torrentName} progress: ${status.progress}%`);
           progressCache = status.progress;
         }
 
@@ -279,11 +291,11 @@ export class MonitorDownloadingProgress extends Action<CompContext & { torrentNa
         await sleep(5000);
       }
 
-      await bot.telegram.editMessageText(chatId, messageId, undefined, `${torrentName} downloaded`);
+      await tlog(`${torrentName} downloaded`);
     } catch (e) {
       context.logger.error(e as Error);
 
-      context.terr(e as Error);
+      await terr(e as Error);
       context.tlog('Monitoring failed');
 
       return context.abort();

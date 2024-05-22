@@ -15,20 +15,23 @@ export const handleQBTFile: () => QueueAction[] = () => [
   InjectLogger,
   InjectNotifications,
   Log,
+  notifications.tadd('Analyzing torrent'),
   ExtractTorrentPattern,
   CheckTorrentFile,
   util.if<MultiTrackContext>(({ type }) => type === 'multi-track', {
     then: [
-      notifications.tlog('Multi Track torrent detected'),
+      notifications.tlog('Torrent parsed, Multi Track detected'),
     ],
   }),
   Log,
+  notifications.tadd('Adding torrent to download'),
   AddUploadToQBitTorrent,
+  notifications.tadd('Start monitoring download progress'),
   util.delay(5000),
   MonitorDownloadingProgress,
   util.if<MultiTrackContext>(({ type }) => type === 'multi-track', {
     then: [
-      notifications.tlog('Start multiplexing'),
+      notifications.tadd('Start multiplexing'),
       ConvertMultiTrack,
     ],
   }),
