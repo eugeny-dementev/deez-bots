@@ -256,7 +256,7 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
       newFiles++;
     }
 
-    await tlog(`Conversion complete: ${oldFiles} old files and ${newFiles}`);
+    await tlog(`Conversion complete: ${newFiles} new out ${newFiles + oldFiles} total files`);
   }
 }
 
