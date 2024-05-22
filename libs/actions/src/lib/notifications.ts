@@ -8,6 +8,7 @@ export type NotificationsContext = {
 }
 
 export type NotificationsOutput = {
+  tadd: (msg: string, fresh?: boolean) => Promise<void>
   tlog: (msg: string, fresh?: boolean) => Promise<void>
   terr: (err: string | Error) => Promise<void>
 }
@@ -20,11 +21,16 @@ export class MultiLineMessage {
   }
 
   edit(msg: string) {
+    if (this.lines.length === 0) {
+      this.add(msg);
+      return;
+    }
+
     const index = this.lines.length - 1;
     this.lines[index] = msg;
   }
 
-  toString() {
+  toString(): string {
     return this.lines.join('\n');
   }
 }
@@ -34,17 +40,33 @@ export class InjectNotifications extends Action<NotificationsContext> {
     const t = context.bot.telegram;
 
     let messageId = 0;
-    let lastMsg = '';
-    const tlog = async (msg: string, fresh: boolean = false): Promise<void> => {
+    const mlm = new MultiLineMessage();
+    let lastMlm = '';
+
+    async function sendMessage(msg: string, fresh?: boolean) {
       if (messageId === 0 && !fresh) {
         messageId = (await t.sendMessage(context.chatId, msg)).message_id;
         return;
       }
 
-      if (lastMsg != msg) {
-        lastMsg = msg;
+      if (lastMlm != msg) {
+        lastMlm = msg;
         await t.editMessageText(context.chatId, messageId, undefined, msg);
       }
+    }
+
+    const tadd = async (newLine: string, fresh: boolean = false): Promise<void> => {
+      mlm.add(newLine);
+      const msg = mlm.toString();
+
+      await sendMessage(msg, fresh);
+    }
+
+    const tlog = async (lastLine: string, fresh: boolean = false): Promise<void> => {
+      mlm.edit(lastLine);
+      const msg = mlm.toString();
+
+      await sendMessage(msg, fresh);
     }
 
     const terr = async (msg: string | Error): Promise<void> => {
@@ -65,7 +87,7 @@ export class InjectNotifications extends Action<NotificationsContext> {
       }
     };
 
-    context.extend({ tlog, terr } as NotificationsOutput);
+    context.extend({ tlog, terr, tadd } as NotificationsOutput);
   }
 }
 
