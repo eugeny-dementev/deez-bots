@@ -1,4 +1,6 @@
 import { Action, QueueContext } from 'async-queue-runner'
+import { chromium } from 'playwright';
+import { closeBrowser, openBrowser } from './helpers';
 
 const metascraper = require('metascraper')([
   require('metascraper-author')(),
@@ -12,9 +14,19 @@ const metascraper = require('metascraper')([
 export type UrlContext = { url: string }
 export class GetPageHtml extends Action<UrlContext> {
   async execute(context: UrlContext & QueueContext): Promise<void> {
-    const { url } = context;
+    const { url, extend } = context;
 
+    const { browser, page } = await openBrowser(chromium)
 
+    await page.goto(url, {
+      waitUntil: 'networkidle',
+    });
+
+    const html = await page.content();
+
+    extend({ html });
+
+    await closeBrowser(browser);
   }
 }
 

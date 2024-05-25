@@ -1,11 +1,7 @@
+import { Browser, BrowserType, Page } from "playwright";
 
-export async function openBrowser(chromium: BrowserType<{}>): Promise<{ browser: BrowserContext; page: Page; }> {
-  const browser = await chromium.launchPersistentContext(getUserDataPath(), { headless: true });
-  const pages = browser.pages()
-
-  for (const page of pages) {
-    page.close();
-  }
+export async function openBrowser(chromium: BrowserType<{}>): Promise<{ browser: Browser; page: Page; }> {
+  const browser = await chromium.launch();
 
   const page: Page = await browser.newPage();
 
@@ -18,12 +14,6 @@ export async function openBrowser(chromium: BrowserType<{}>): Promise<{ browser:
   return { browser, page };
 }
 
-export async function closeBrowser(browser: BrowserContext): Promise<void> {
-  const pages = browser.pages();
-
-  for (const page of pages) {
-    page.close();
-  }
-
+export async function closeBrowser(browser: Browser): Promise<void> {
   await browser.close();
 }
