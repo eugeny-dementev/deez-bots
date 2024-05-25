@@ -23,20 +23,26 @@ const metascraper = require('metascraper')([
   require('metascraper-url')()
 ])
 
+export type DevContext = LoggerOutput & NotificationsOutput;
+
 export type UrlContext = { url: string }
-export class GetPageHtml extends Action<UrlContext> {
-  async execute(context: UrlContext & QueueContext): Promise<void> {
+export class GetPageHtml extends Action<UrlContext & DevContext> {
+  async execute(context: UrlContext & DevContext & QueueContext): Promise<void> {
     const { url, extend } = context;
 
+    context.logger.info('Opening Browser');
     const { browser, page } = await openBrowser(chromium)
 
     await page.goto(url, { waitUntil: 'domcontentloaded' });
 
     const html = await page.content();
+    context.logger.info(`Html extracted, string length: ${html.length}`);
 
     extend({ html });
 
     await closeBrowser(browser);
+
+    context.logger.info('Browser closed');
   }
 }
 
@@ -52,11 +58,13 @@ export type InputContext = {
   url: string,
   html: string,
 }
-export class ExtractMetadata extends Action<InputContext> {
-  async execute(context: InputContext & QueueContext): Promise<void> {
+export class ExtractMetadata extends Action<InputContext & DevContext> {
+  async execute(context: InputContext & DevContext & QueueContext): Promise<void> {
     const { url, html, extend } = context;
 
+    context.logger.info('Extracting metadata');
     const metadata = await metascraper({ url, html }) as Metadata;
+    context.logger.info('Metadata extracted', metadata);
 
     extend({ metadata } as { metadata: Metadata });
   }
