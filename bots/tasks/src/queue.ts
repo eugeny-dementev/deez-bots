@@ -1,4 +1,11 @@
-export const addTask = () => [
+import { InjectLogger, InjectNotifications } from "@libs/actions";
+import { ExtractMetadata, GetPageHtml } from "./actions";
+
+export const addMetaTask = () => [
+  InjectLogger,
+  InjectNotifications,
+  GetPageHtml,
+  ExtractMetadata,
   /*
   CheckFileExists,
   ContainURL, {
