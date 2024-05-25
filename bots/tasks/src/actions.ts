@@ -30,9 +30,7 @@ export class GetPageHtml extends Action<UrlContext> {
 
     const { browser, page } = await openBrowser(chromium)
 
-    await page.goto(url, {
-      waitUntil: 'networkidle',
-    });
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
 
     const html = await page.content();
 
