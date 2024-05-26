@@ -49,7 +49,7 @@ export class GetPageHtml extends Action<UrlContext & DevContext> {
 
 export type Metadata = {
   author: string,
-  date: unknown,
+  date: string,
   description: string,
   publisher: string,
   title: string,
