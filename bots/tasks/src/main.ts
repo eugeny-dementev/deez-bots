@@ -22,6 +22,13 @@ if (!filePath || !existsSync(filePath)) {
   throw new Error(`No file found at ${filePath}`);
 }
 
+const logger = loggerFactory();
+const queue = new QueueRunner({
+  logger,
+});
+
+logger.setContext('TasksBot');
+queue.addEndListener(() => logger.setContext('TasksBot'));
 
 bot.use(async (ctx, next) => {
   const userId = ctx.message?.from.id || 0;
