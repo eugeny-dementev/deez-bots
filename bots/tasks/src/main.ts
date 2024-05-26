@@ -63,7 +63,7 @@ bot.on(message('text'), async (ctx) => {
   ctx.reply('Task added');
 });
 
-bot.launch();
+bot.launch(() => logger.info('Bot launched'));
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
