@@ -111,9 +111,12 @@ export class FormatMetadata extends Action<MetadataContext & DevContext> {
     const { metadata, extend, url } = context;
     context.logger.info('Ready to format metadata: ' + new Date(context.metadata.date))
 
-    const date = new Date(metadata.date);
+    let date = new Date(metadata.date).toDateString();
+    const dateParts = date.split(' ');
+    dateParts.shift();
+    date = dateParts.join(' ');
 
-    extend({ text: `Check [${date.toDateString()} - ${metadata.author} - ${metadata.title}](${url})` })
+    extend({ text: `Check [${date} - ${metadata.author} - ${metadata.title}](${url})` })
   }
 }
 
