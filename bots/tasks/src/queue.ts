@@ -3,9 +3,9 @@ import {
   AppendMdToFile,
   DetectTaskType,
   ExtractMetadata,
-  FormatMetadataToMd,
+  FormatMetadata,
   FormatTextToMd,
-  FormatTextWithUrlToMd,
+  FormatTextWithUrl,
   GetPageHtml,
   TaskTypeContext,
 } from "./actions";
@@ -21,20 +21,16 @@ export const addMetaTask = () => [
       ExtractMetadata,
       util.if<TaskTypeContext>(({ type }) => 'url-only' === type, {
         then: [
-          FormatMetadataToMd,
+          FormatMetadata,
         ],
       }),
       util.if<TaskTypeContext>(({ type }) => 'text-with-url' === type, {
         then: [
-          FormatTextWithUrlToMd,
+          FormatTextWithUrl,
         ],
       }),
     ]
   }),
-  util.if<TaskTypeContext>(({ type }) => 'text-only' === type, {
-    then: [
-      FormatTextToMd,
-    ]
-  }),
+  FormatTextToMd,
   AppendMdToFile,
 ];

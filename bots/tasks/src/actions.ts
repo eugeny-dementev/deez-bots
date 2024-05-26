@@ -125,3 +125,20 @@ export class FormatTextWithUrl extends Action<TextContext & MetadataContext & De
     extend({ text: text.replace(url, `[${metadata.author} - ${metadata.title}](${url})`) })
   }
 }
+
+export class FormatTextToMd extends Action<TextContext & DevContext> {
+  async execute(context: TextContext & DevContext & QueueContext): Promise<void> {
+    let text = context.text;
+
+    const bullets = text.trim().split('\n'); // lines represent bullets
+    const [head, ...children] = bullets.map(s => s.trim()); // First line is task and the rest is sub bullets
+
+    if (children.length == 0) {
+      text = `- ${head}\n`;
+    }
+
+    text = `- ${head}\n    - ${children.join('\n    - ')}`;
+
+    context.extend({ markdown: text });
+  }
+}
