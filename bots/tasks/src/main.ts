@@ -50,17 +50,15 @@ bot.on(message('text'), async (ctx) => {
 
   console.log('message', message);
 
-  let task: string = '';
-  if (message.link_preview_options && isValidURL(message.text)) {
-    task = prepareLinkTask(message.text);
-  } else {
-    task = prepareTextTask(message.text);
-  }
-
-  const currentContent = await readTasksFile(filePath);
-  const extendedContent = addTask(currentContent, task)
-
-  await writeTasksFile(filePath, extendedContent);
+  queue.add(addMetaTask(), {
+    bot,
+    hasUrl: Boolean(message.link_preview_options),
+    logger,
+    path: filePath,
+    text: message.text,
+    url: message.link_preview_options?.url,
+    urlOnly: isValidURL(message.text),
+  });
 
   ctx.reply('Task added');
 });
