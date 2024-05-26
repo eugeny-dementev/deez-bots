@@ -43,6 +43,7 @@
     "metascraper-publisher": "^5.45.7",
     "metascraper-title": "^5.45.7",
     "metascraper-url": "^5.45.7",
+    "metascraper-youtube": "^5.45.7",
     "parse-torrent": "^9.1.5",
     "playwright": "^1.44.0",
     "playwright-extra": "^4.3.6",

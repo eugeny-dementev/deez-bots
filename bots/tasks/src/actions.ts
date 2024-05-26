@@ -20,7 +20,8 @@ const metascraper = require('metascraper')([
   require('metascraper-description')(),
   require('metascraper-publisher')(),
   require('metascraper-title')(),
-  require('metascraper-url')()
+  require('metascraper-url')(),
+  require('metascraper-youtube')(),
 ])
 
 export type DevContext = LoggerOutput & NotificationsOutput;
