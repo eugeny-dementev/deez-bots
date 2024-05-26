@@ -55,12 +55,12 @@ export type Metadata = {
   title: string,
   url: string,
 }
-export type InputContext = {
+export type HtmlContext = {
   url: string,
   html: string,
 }
-export class ExtractMetadata extends Action<InputContext & DevContext> {
-  async execute(context: InputContext & DevContext & QueueContext): Promise<void> {
+export class ExtractMetadata extends Action<HtmlContext & DevContext> {
+  async execute(context: HtmlContext & DevContext & QueueContext): Promise<void> {
     const { url, html, extend } = context;
 
     context.logger.info('Extracting metadata');
