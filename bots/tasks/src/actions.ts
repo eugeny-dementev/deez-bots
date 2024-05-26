@@ -70,3 +70,18 @@ export class ExtractMetadata extends Action<HtmlContext & DevContext> {
     extend({ metadata } as { metadata: Metadata });
   }
 }
+
+export type MetadataContext = {
+  metadata: Metadata,
+  url: string,
+}
+export class FormatMetadata extends Action<MetadataContext & DevContext> {
+  async execute(context: MetadataContext & DevContext & QueueContext): Promise<void> {
+    const { metadata, extend, url } = context;
+    context.logger.info('Ready to format metadata: ' + new Date(context.metadata.date))
+
+    const date = new Date(metadata.date);
+
+    extend({ text: `Check [${date.toDateString()} - ${metadata.author} - ${metadata.title}](${url})` })
+  }
+}
