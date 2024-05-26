@@ -142,3 +142,20 @@ export class FormatTextToMd extends Action<TextContext & DevContext> {
     context.extend({ markdown: text });
   }
 }
+
+export type FileContext = {
+  path: string,
+  markdown: string,
+}
+export class AppendMdToFile extends Action<FileContext & DevContext> {
+  async execute(context: FileContext & DevContext & QueueContext): Promise<void> {
+    const { path, markdown } = context;
+
+    let buffer = await asyncReadFile(path);
+    let content = buffer.toString().trimEnd();
+
+    content = `${content}\n${markdown}\n`;
+
+    await asyncWriteFile(path, content);
+  }
+}
