@@ -135,9 +135,9 @@ export class FormatTextToMd extends Action<TextContext & DevContext> {
 
     if (children.length == 0) {
       text = `- ${head}\n`;
+    } else {
+      text = `- ${head}\n    - ${children.join('\n    - ')}`;
     }
-
-    text = `- ${head}\n    - ${children.join('\n    - ')}`;
 
     context.extend({ markdown: text });
   }
