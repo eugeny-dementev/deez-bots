@@ -1,14 +1,10 @@
 import { loggerFactory } from '@libs/actions';
 import { QueueRunner } from 'async-queue-runner';
-import { existsSync, readFile, writeFile } from 'fs';
+import { existsSync } from 'fs';
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
-import { promisify } from 'util';
 import { isValidURL } from './helpers';
 import { addMetaTask } from './queue';
-
-const asyncWriteFile = promisify(writeFile);
-const asyncReadFile = promisify(readFile);
 
 const filePath = process.env.TASKS_FILE;
 
