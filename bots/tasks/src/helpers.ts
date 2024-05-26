@@ -21,3 +21,14 @@ export async function openBrowser(chromium: BrowserType<{}>): Promise<{ browser:
 export async function closeBrowser(browser: Browser): Promise<void> {
   await browser.close();
 }
+
+export function isValidURL(url: string) {
+  try {
+    new URL(url);
+
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
