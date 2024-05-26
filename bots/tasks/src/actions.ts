@@ -1,11 +1,15 @@
-import { Action, QueueContext } from 'async-queue-runner'
+import { Action, QueueContext } from 'async-queue-runner';
+import { LoggerOutput, NotificationsOutput } from '@libs/actions';
+import { readFile, writeFile } from 'fs';
 // import { chromium } from 'playwright';
 // playwright-extra is a drop-in replacement for playwright,
 // it augments the installed playwright with plugin functionality
 import { chromium } from 'playwright-extra';
+import { promisify } from 'util';
 import { closeBrowser, openBrowser } from './helpers';
-import { LoggerOutput, NotificationsOutput } from '@libs/actions';
 
+const asyncWriteFile = promisify(writeFile);
+const asyncReadFile = promisify(readFile);
 
 // Load the stealth plugin and use defaults (all tricks to hide playwright usage)
 // Note: playwright-extra is compatible with most puppeteer-extra plugins
