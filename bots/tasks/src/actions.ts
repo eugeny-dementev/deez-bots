@@ -26,6 +26,33 @@ const metascraper = require('metascraper')([
 
 export type DevContext = LoggerOutput & NotificationsOutput;
 
+export type TaskContext = {
+  text: string
+  hasUrl: boolean
+  urlOnly: boolean
+}
+export type TaskTypeContext = {
+  type: 'url-only' | 'text-with-url' | 'text-only'
+}
+export class DetectTaskType extends Action<TaskContext & DevContext> {
+  async execute(context: TaskContext & LoggerOutput & NotificationsOutput & QueueContext): Promise<void> {
+    const { hasUrl, urlOnly } = context;
+
+    let type: TaskTypeContext['type'];
+    if (hasUrl && urlOnly) {
+      type = 'url-only';
+    } else if (hasUrl) {
+      type = 'text-with-url';
+    } else {
+      type = 'text-only';
+    }
+
+    context.logger.info(`Type detected: ${type}`);
+
+    context.extend({ type } as TaskTypeContext);
+  }
+}
+
 export type UrlContext = { url: string }
 export class GetPageHtml extends Action<UrlContext & DevContext> {
   async execute(context: UrlContext & DevContext & QueueContext): Promise<void> {
