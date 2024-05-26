@@ -85,3 +85,12 @@ export class FormatMetadata extends Action<MetadataContext & DevContext> {
     extend({ text: `Check [${date.toDateString()} - ${metadata.author} - ${metadata.title}](${url})` })
   }
 }
+
+export type TextContext = { text: string }
+export class FormatTextWithUrl extends Action<TextContext & MetadataContext & DevContext> {
+  async execute(context: TextContext & MetadataContext & DevContext & QueueContext): Promise<void> {
+    const { text, url, metadata, extend } = context;
+
+    extend({ text: text.replace(url, `[${metadata.author} - ${metadata.title}](${url})`) })
+  }
+}
