@@ -1,24 +1,40 @@
 import { InjectLogger, InjectNotifications } from "@libs/actions";
-import { ExtractMetadata, GetPageHtml } from "./actions";
+import {
+  AppendMdToFile,
+  DetectTaskType,
+  ExtractMetadata,
+  FormatMetadataToMd,
+  FormatTextToMd,
+  FormatTextWithUrlToMd,
+  GetPageHtml,
+  TaskTypeContext,
+} from "./actions";
+import { util } from "async-queue-runner";
 
 export const addMetaTask = () => [
   InjectLogger,
   InjectNotifications,
-  GetPageHtml,
-  ExtractMetadata,
-  /*
-  CheckFileExists,
-  ContainURL, {
-    true: [
-      notification.tlog('Extracting metadata'),
-      ScrapeMicrodata,
-      FormatMetadataToMd,
-    ],
-    false: [
+  DetectTaskType,
+  util.if<TaskTypeContext>(({ type }) => ['url-only', 'text-with-url'].includes(type), {
+    then: [
+      GetPageHtml,
+      ExtractMetadata,
+      util.if<TaskTypeContext>(({ type }) => 'url-only' === type, {
+        then: [
+          FormatMetadataToMd,
+        ],
+      }),
+      util.if<TaskTypeContext>(({ type }) => 'text-with-url' === type, {
+        then: [
+          FormatTextWithUrlToMd,
+        ],
+      }),
+    ]
+  }),
+  util.if<TaskTypeContext>(({ type }) => 'text-only' === type, {
+    then: [
       FormatTextToMd,
-    ],
-  },
-  WriteMdToFile,
-  notification.tlog('Task added'),
-  */
+    ]
+  }),
+  AppendMdToFile,
 ];
