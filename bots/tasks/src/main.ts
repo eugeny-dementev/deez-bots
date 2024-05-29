@@ -54,7 +54,7 @@ bot.on(message('text'), async (ctx) => {
     logger,
     path: filePath,
     text: message.text,
-    url: message.link_preview_options?.url,
+    url: message.link_preview_options?.url || message.text,
     urlOnly: isValidURL(message.text),
   });
 });
