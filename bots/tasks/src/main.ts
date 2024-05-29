@@ -33,7 +33,6 @@ queue.addEndListener(() => logger.setContext('TasksBot'));
 bot.use(async (ctx, next) => {
   const userId = ctx.message?.from.id || 0;
 
-
   if (allowedUsers.has(userId)) await next();
   else console.log('blocked user: ', {
     userId,
@@ -43,10 +42,13 @@ bot.use(async (ctx, next) => {
 
 bot.on(message('text'), async (ctx) => {
   const message = ctx.message;
+  const userId = ctx.message?.from.id || 0;
 
   console.log('message', message);
 
   queue.add(addMetaTask(), {
+    userId,
+    chatId: userId,
     bot,
     hasUrl: Boolean(message.link_preview_options),
     logger,
@@ -55,8 +57,6 @@ bot.on(message('text'), async (ctx) => {
     url: message.link_preview_options?.url,
     urlOnly: isValidURL(message.text),
   });
-
-  ctx.reply('Task added');
 });
 
 bot.launch(() => logger.info('Bot launched'));

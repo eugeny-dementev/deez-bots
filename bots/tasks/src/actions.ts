@@ -1,5 +1,5 @@
-import { Action, QueueContext } from 'async-queue-runner';
 import { LoggerOutput, NotificationsOutput } from '@libs/actions';
+import { Action, QueueContext } from 'async-queue-runner';
 import { readFile, writeFile } from 'fs';
 // import { chromium } from 'playwright';
 // playwright-extra is a drop-in replacement for playwright,
@@ -63,6 +63,7 @@ export class GetPageHtml extends Action<UrlContext & DevContext> {
     const { url, extend } = context;
 
     context.logger.info('Opening Browser');
+    context.tlog('Extracting HTML from web page');
     const { browser, page } = await openBrowser(chromium)
 
     await page.goto(url, { waitUntil: 'domcontentloaded' });
@@ -72,6 +73,7 @@ export class GetPageHtml extends Action<UrlContext & DevContext> {
 
     extend({ html });
 
+    context.tlog('HTML extracted');
     await closeBrowser(browser);
 
     context.logger.info('Browser closed');
@@ -95,7 +97,9 @@ export class ExtractMetadata extends Action<HtmlContext & DevContext> {
     const { url, html, extend } = context;
 
     context.logger.info('Extracting metadata');
+    context.tlog('Extracting metadata from HTML');
     const metadata = await metascraper({ url, html }) as Metadata;
+    context.tlog('Metadata extracted');
     context.logger.info('Metadata extracted', metadata);
 
     extend({ metadata } as { metadata: Metadata });
@@ -116,7 +120,13 @@ export class FormatMetadata extends Action<MetadataContext & DevContext> {
     dateParts.shift();
     date = dateParts.join(' ');
 
-    extend({ text: `Check [${date} - ${metadata.author} - ${metadata.title}](${url})` })
+    const parts = [
+      date,
+      metadata.author,
+      metadata.title || metadata.url,
+    ].filter(part => Boolean(part));
+
+    extend({ text: `[${parts.join(' - ')}](${url})` })
   }
 }
 
@@ -125,7 +135,12 @@ export class FormatTextWithUrl extends Action<TextContext & MetadataContext & De
   async execute(context: TextContext & MetadataContext & DevContext & QueueContext): Promise<void> {
     const { text, url, metadata, extend } = context;
 
-    extend({ text: text.replace(url, `[${metadata.author} - ${metadata.title}](${url})`) })
+    const parts = [
+      metadata.author,
+      metadata.title || metadata.url,
+    ].filter(part => Boolean(part));
+
+    extend({ text: text.replace(url, `[${parts.join(' - ')}](${url})`) })
   }
 }
 

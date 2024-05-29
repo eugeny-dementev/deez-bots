@@ -4,15 +4,11 @@
 # Tip: Modify "docker-build" options in project.json to change docker build args.
 #
 # Run the container with `docker run -v=path/to/tasks/file:/tasks.md --env-file=./bots/tasks/.production.env --name=tasks-bot tasks-bot-image`.
-FROM docker.io/node:lts-alpine
+FROM mcr.microsoft.com/playwright:v1.44.0-jammy
 
 WORKDIR /app
 
-RUN addgroup --system tasks && \
-    adduser --system -G tasks tasks
-
 COPY dist/bots/tasks tasks
-RUN chown -R tasks:tasks .
 
 # You can remove this install step if you build with `--bundle` option.
 # The bundled output will include external dependencies.
