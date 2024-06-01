@@ -12,7 +12,7 @@ import {
   BotContext,
   CommandContext,
   FContextMessage,
-  LastFileContext,
+  FileContext,
   LinkTypeContext,
   VideoDimensions,
   VideoDimensionsContext,
@@ -24,14 +24,14 @@ import {
 
 
 
-export class DeleteFile extends Action<LastFileContext> {
-  async execute({ filePath }: LastFileContext): Promise<void> {
+export class DeleteFile extends Action<FileContext> {
+  async execute({ filePath }: FileContext): Promise<void> {
     await del(filePath, { force: true });
   }
 }
 
-export class UploadVideo extends Action<BotContext & VideoDimensionsContext & LastFileContext> {
-  async execute({ lastFile, bot, width, height, channelId }: VideoDimensionsContext & BotContext & LastFileContext & QueueContext): Promise<void> {
+export class UploadVideo extends Action<BotContext & VideoDimensionsContext & FileContext> {
+  async execute({ lastFile, bot, width, height, channelId }: VideoDimensionsContext & BotContext & FileContext & QueueContext): Promise<void> {
     const videoBuffer = await fsPromises.readFile(lastFile);
 
     await bot.telegram.sendVideo(channelId!, { source: videoBuffer }, { width, height });

@@ -2,9 +2,8 @@ import { QueueRunner } from 'async-queue-runner';
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
 import { adminId, publishersIds, token } from './config.js';
-import { rolesFactory } from './helpers.js';
-import { shortHandlerQueue } from './queues.js';
-import { UserLimitStatus } from './types.js';
+import { handlerQueue } from './queues.js';
+import { loggerFactory } from '@libs/actions';
 
 const bot = new Telegraf(token);
 
@@ -15,6 +14,16 @@ const allowedUsers = new Set([
   ...publishersIds,
   adminId,
 ]);
+
+const logger = loggerFactory();
+const queueRunner = new QueueRunner({
+  logger,
+});
+
+logger.setContext('TasksBot');
+queueRunner.addEndListener((name, size) => {
+  console.log(`Queue(${name}): finished. ${size} queues are still running`);
+})
 
 bot.use(async (ctx, next) => {
   const userId = ctx.message?.from.id || 0;
@@ -29,34 +38,22 @@ bot.use(async (ctx, next) => {
   });
 });
 
-const queueRunner = new QueueRunner();
-
-queueRunner.addEndListener((name, size) => {
-  console.log(`Queue(${name}): finished. ${size} queues are still running`);
-})
-
-const getUserRole = rolesFactory(adminId, publishersIds)
-const limitsStatus: UserLimitStatus = {};
-
 bot.on(message('text'), async (ctx) => {
   const message = ctx.message;
   const userId = message.from.id;
   const chatId = ctx.message?.chat.id || 0;
   const url = message.text;
-  const role = getUserRole(userId);
 
   const context = {
-    limitsStatus,
     userId,
     chatId,
     url,
     bot,
-    role,
   };
 
   const queueName = `${userId}_${queueRunner.getName()}`;
 
-  queueRunner.add(shortHandlerQueue(), context, queueName);
+  queueRunner.add(handlerQueue(), context, queueName);
 });
 
 bot.launch(() => {
