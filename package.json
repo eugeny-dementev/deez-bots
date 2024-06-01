@@ -4,6 +4,9 @@
   "license": "MIT",
   "scripts": {},
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "devDependencies": {
     "@nx/esbuild": "19.0.3",
     "@nx/eslint": "19.0.3",
