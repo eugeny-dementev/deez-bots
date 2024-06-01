@@ -1,7 +1,6 @@
-export const swapDir = process.env.SWAP_DIR;
-export const homeDir = process.env.HOME_DIR as string;
+export const swapDir = process.env.SWAP_DIR as string;
 
-if (!homeDir || !swapDir) throw new Error('SWAP_DIR and HOME_DIR must be specified');
+if (!swapDir) throw new Error('SWAP_DIR must be specified');
 
 export const token = process.env.BOT_TOKEN as string
 

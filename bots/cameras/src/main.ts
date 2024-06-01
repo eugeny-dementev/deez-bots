@@ -1,17 +1,16 @@
 import { QueueRunner } from 'async-queue-runner';
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
-import { adminId, publishersIds, token } from './config.js';
+import { adminId, token } from './config.js';
 import { handlerQueue } from './queues.js';
 import { loggerFactory } from '@libs/actions';
 
 const bot = new Telegraf(token);
 
-bot.start((ctx) => ctx.reply('Welcome to Shorts Saver Bot'));
-bot.help((ctx) => ctx.reply('Send me a short video and I\'ll public it '));
+bot.start((ctx) => ctx.reply('Welcome to Cameras Bot'));
+bot.help((ctx) => ctx.reply('Send me any message and I show you the corridor' ));
 
 const allowedUsers = new Set([
-  ...publishersIds,
   adminId,
 ]);
 
@@ -20,7 +19,7 @@ const queueRunner = new QueueRunner({
   logger,
 });
 
-logger.setContext('TasksBot');
+logger.setContext('CamerasBot');
 queueRunner.addEndListener((name, size) => {
   console.log(`Queue(${name}): finished. ${size} queues are still running`);
 })
@@ -42,13 +41,12 @@ bot.on(message('text'), async (ctx) => {
   const message = ctx.message;
   const userId = message.from.id;
   const chatId = ctx.message?.chat.id || 0;
-  const url = message.text;
 
   const context = {
     userId,
     chatId,
-    url,
     bot,
+    room: 'corridor',
   };
 
   const queueName = `${userId}_${queueRunner.getName()}`;
@@ -56,9 +54,7 @@ bot.on(message('text'), async (ctx) => {
   queueRunner.add(handlerQueue(), context, queueName);
 });
 
-bot.launch(() => {
-  console.log('bot launched');
-});
+bot.launch(() => logger.info('Bot launched'));
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
