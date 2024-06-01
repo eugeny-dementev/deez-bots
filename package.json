@@ -39,6 +39,7 @@
     "del": "^6.1.1",
     "expand-tilde": "^2.0.2",
     "glob": "^10.3.14",
+    "grammy": "^1.24.0",
     "metascraper": "^5.45.8",
     "metascraper-author": "^5.45.7",
     "metascraper-date": "^5.45.7",
