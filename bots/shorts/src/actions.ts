@@ -17,6 +17,7 @@ import {
   VideoDimensions,
   VideoDimensionsContext,
 } from './types.js';
+import { InputFile } from 'grammy';
 
 export class Notification<C> extends Action<BotContext> {
   message: string | FContextMessage<C & BotContext>;
@@ -36,7 +37,7 @@ export class Notification<C> extends Action<BotContext> {
       ? await this.message(context)
       : this.message;
 
-    bot.telegram.sendMessage(chatId, msg, { disable_notification: this.silent });
+    bot.api.sendMessage(chatId, msg, { disable_notification: this.silent });
   }
 }
 
@@ -226,9 +227,9 @@ export class DeleteLastFile extends Action<LastFileContext> {
 
 export class UploadVideo extends Action<BotContext & VideoDimensionsContext & LastFileContext> {
   async execute({ lastFile, bot, width, height, channelId }: VideoDimensionsContext & BotContext & LastFileContext & QueueContext): Promise<void> {
-    const videoBuffer = await fsPromises.readFile(lastFile);
+    const inputFile = new InputFile(lastFile);
 
-    await bot.telegram.sendVideo(channelId!, { source: videoBuffer }, { width, height });
+    await bot.api.sendVideo(channelId!, inputFile, { width, height });
   }
 }
 
