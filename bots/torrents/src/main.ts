@@ -1,12 +1,8 @@
 import { QueueRunner } from 'async-queue-runner';
 import expandTilde from 'expand-tilde';
-import * as fs from 'fs';
 import * as path from 'path';
-import { Readable } from 'stream';
-import { finished } from 'stream/promises';
-import { ReadableStream } from 'stream/web';
-import { Telegraf } from 'telegraf';
-import { message } from 'telegraf/filters';
+import { Bot, Context } from 'grammy';
+import { FileFlavor, hydrateFiles } from '@grammyjs/files';
 import { adminId, downloadsDir, qMoviesDir, publishersIds, token } from './config.js';
 import { handleQBTFile } from './performances.js';
 import { loggerFactory } from '@libs/actions';
@@ -29,10 +25,14 @@ const queue = new QueueRunner({
 logger.setContext('TorrentsBot');
 queue.addEndListener(() => logger.setContext('TorrentsBot'));
 
-const bot = new Telegraf(token);
+type MyContext = FileFlavor<Context>;
 
-bot.start((ctx) => ctx.reply('Welcome to Sverdlova'));
-bot.help((ctx) => ctx.reply('Send me a torrent with mkv files'));
+const bot = new Bot<MyContext>(token);
+
+bot.api.config.use(hydrateFiles(bot.token));
+
+bot.command('start', (ctx) => ctx.reply('Welcome to Sverdlova'));
+bot.command('help', (ctx) => ctx.reply('Send me a torrent with mkv files'));
 
 const allowedUsers = new Set([
   adminId,
@@ -44,7 +44,6 @@ const adminChatId = adminId;
 bot.use(async (ctx, next) => {
   const userId = ctx.message?.from.id || 0;
 
-
   if (allowedUsers.has(userId)) await next();
   else logger.warn('blocked user: ', {
     userId,
@@ -52,7 +51,7 @@ bot.use(async (ctx, next) => {
   });
 });
 
-bot.on(message('document'), async (ctx) => {
+bot.on('message:document', async (ctx) => {
   //@ts-ignore-line
   const message = ctx.message;
 
@@ -60,9 +59,9 @@ bot.on(message('document'), async (ctx) => {
   const chatId = message.chat.id;
 
   if (adminChatId !== chatId) {
-    bot.telegram
+    bot.api
       .forwardMessage(adminChatId, chatId, message.message_id)
-      .then(() => logger.info("message forwaded"));
+      .then(() => logger.info("message forwarded"));
   }
 
   if (doc.mime_type !== 'application/x-bittorrent') {
@@ -71,10 +70,11 @@ bot.on(message('document'), async (ctx) => {
     return;
   }
 
-  const fileId = doc.file_id;
   const fileName = doc.file_name as string;
 
-  const fileUrl = await ctx.telegram.getFileLink(fileId);
+  const file = await ctx.getFile();
+
+  logger.info('File:', file);
 
   const filenameObject = path.parse(fileName)
   const englishFileName = convertRussianToEnglish(filenameObject.name) + filenameObject.ext;
@@ -84,11 +84,8 @@ bot.on(message('document'), async (ctx) => {
   const absolutePathDownloadsDir = expandTilde(downloadsDir);
 
   const destination = path.join(absolutePathDownloadsDir, englishFileName);
-  const response = await fetch(fileUrl);
 
-  const fileStream = fs.createWriteStream(destination);
-
-  await finished(Readable.fromWeb(response.body as ReadableStream).pipe(fileStream));
+  await file.download(destination);
 
   queue.add(handleQBTFile(), { filePath: destination, bot, logger, adminId: adminChatId, chatId, dir: qMoviesDir });
 });
@@ -96,12 +93,12 @@ bot.on(message('document'), async (ctx) => {
 bot.use((ctx) => {
   try {
     // @ts-ignore-line
-    const message = ctx.update.message;
+    const message = ctx.message!;
 
     const chatId = message.chat.id;
 
     if (adminChatId !== chatId) {
-      bot.telegram
+      bot.api
         .forwardMessage(adminChatId, chatId, message.message_id)
         .then(function() { logger.info("mesage forwaded") });
     }
@@ -110,11 +107,11 @@ bot.use((ctx) => {
   }
 })
 
-bot.launch(() => logger.info('Bot launched'));
+bot.start({ onStart: (me) => logger.info('Bot launched', me) });
 
 // Enable graceful stop
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT', () => bot.stop());
+process.once('SIGTERM', () => bot.stop());
 
 function convertRussianToEnglish(text: string) {
   const convertedText = text
