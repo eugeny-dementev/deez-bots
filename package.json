@@ -31,6 +31,7 @@
     "typescript": "~5.4.2"
   },
   "dependencies": {
+    "@grammyjs/files": "^1.1.1",
     "@types/expand-tilde": "^2.0.2",
     "@types/shelljs": "^0.8.15",
     "async-queue-runner": "^0.14.0",
