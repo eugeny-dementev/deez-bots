@@ -1,14 +1,13 @@
 import { QueueRunner } from 'async-queue-runner';
-import { Telegraf } from 'telegraf';
-import { message } from 'telegraf/filters';
+import { Bot } from 'grammy';
 import { adminId, token } from './config.js';
 import { handlerQueue } from './queues.js';
 import { loggerFactory } from '@libs/actions';
 
-const bot = new Telegraf(token);
+const bot = new Bot(token);
 
-bot.start((ctx) => ctx.reply('Welcome to Cameras Bot'));
-bot.help((ctx) => ctx.reply('Send me any message and I show you the corridor' ));
+bot.command('start', (ctx) => ctx.reply('Welcome to Cameras Bot'));
+bot.command('help', (ctx) => ctx.reply('Send me any message and I show you the corridor' ));
 
 const allowedUsers = new Set([
   adminId,
@@ -37,10 +36,10 @@ bot.use(async (ctx, next) => {
   });
 });
 
-bot.on(message('text'), async (ctx) => {
+bot.on('message:text', async (ctx) => {
   const message = ctx.message;
   const userId = message.from.id;
-  const chatId = ctx.message?.chat.id || 0;
+  const chatId = ctx.message.chat.id;
 
   const context = {
     userId,
@@ -54,8 +53,10 @@ bot.on(message('text'), async (ctx) => {
   queueRunner.add(handlerQueue(), context, queueName);
 });
 
-bot.launch(() => logger.info('Bot launched'));
+bot.start({ onStart: (me) => logger.info('Bot launched', me) });
+
+bot.catch((error) => logger.error(error));
 
 // Enable graceful stop
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT', () => bot.stop());
+process.once('SIGTERM', () => bot.stop());
