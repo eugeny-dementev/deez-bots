@@ -1,6 +1,6 @@
 import { BrowserContext as Browser, BrowserType, Page } from "playwright";
-import { Telegraf } from "telegraf";
 import { Logger } from "./logger.js";
+import { Bot } from "grammy";
 
 export type PlaywrightContext = {
   chromium: BrowserType,
@@ -13,7 +13,7 @@ type BLogger = {
 }
 
 export type BotContext = {
-  bot: Telegraf,
+  bot: Bot,
   filePath: string,
   logger: Logger,
   destination: string,

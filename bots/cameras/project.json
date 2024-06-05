@@ -1,0 +1,64 @@
+{
+  "name": "cameras",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "bots/cameras/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "node",
+        "outputPath": "dist/bots/cameras",
+        "format": ["cjs"],
+        "bundle": false,
+        "main": "bots/cameras/src/main.ts",
+        "tsConfig": "bots/cameras/tsconfig.app.json",
+        "assets": ["bots/cameras/src/assets"],
+        "generatePackageJson": true,
+        "buildableProjectDepsInPackageJsonType": "dependencies",
+        "esbuildOptions": {
+          "sourcemap": true,
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {},
+        "production": {
+          "esbuildOptions": {
+            "sourcemap": false,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "serve": {
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "cameras:build"
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "cameras:build:development"
+        },
+        "production": {
+          "buildTarget": "cameras:build:production"
+        }
+      }
+    },
+    "docker-build": {
+      "dependsOn": ["build", "docker-dl-build"],
+      "command": "docker build -f bots/cameras/Dockerfile . -t cameras-bot-image"
+    },
+    "docker-dl-build": {
+      "command": "docker build -f docker/dl.Dockerfile . -t utils/dl"
+    }
+  }
+}

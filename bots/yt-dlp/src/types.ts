@@ -1,5 +1,5 @@
-import { Telegraf } from "telegraf"
 import { parseFormatsListing } from "./helpers.js";
+import { Bot } from "grammy";
 
 export type Timestampt = ReturnType<typeof Date.now>;
 
@@ -19,7 +19,7 @@ export type BotContext = {
   userId: number
   chatId: number
   url: string
-  bot: Telegraf
+  bot: Bot
   role: UserRole
   destFileName: string
 }
