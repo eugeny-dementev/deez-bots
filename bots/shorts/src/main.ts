@@ -1,15 +1,15 @@
 import { QueueRunner } from 'async-queue-runner';
-import { Telegraf } from 'telegraf';
-import { message } from 'telegraf/filters';
+import { Bot } from 'grammy';
 import { adminId, channelId, cookiesPath, publishersIds, token } from './config.js';
 import { rolesFactory } from './helpers.js';
 import { shortHandlerQueue } from './queues.js';
 import { UserLimitStatus } from './types.js';
+import { loggerFactory } from '@libs/actions';
 
-const bot = new Telegraf(token);
+const bot = new Bot(token);
 
-bot.start((ctx) => ctx.reply('Welcome to Shorts Saver Bot'));
-bot.help((ctx) => ctx.reply('Send me a short video and I\'ll public it '));
+bot.command('start', (ctx) => ctx.reply('Welcome to Shorts Saver Bot'));
+bot.command('help', (ctx) => ctx.reply('Send me a short video and I\'ll public it '));
 
 const allowedUsers = new Set([
   ...publishersIds,
@@ -29,19 +29,21 @@ bot.use(async (ctx, next) => {
   });
 });
 
-const queueRunner = new QueueRunner();
+const logger = loggerFactory();
+const queueRunner = new QueueRunner({
+  logger,
+});
 
-queueRunner.addEndListener((name, size) => {
-  console.log(`Queue(${name}): finished. ${size} queues are still running`);
-})
+logger.setContext('ShortsBot');
+queueRunner.addEndListener(() => logger.setContext('ShortsBot'));
 
 const getUserRole = rolesFactory(adminId, publishersIds)
 const limitsStatus: UserLimitStatus = {};
 
-bot.on(message('text'), async (ctx) => {
+bot.on('message:text', async (ctx) => {
   const message = ctx.message;
   const userId = message.from.id;
-  const chatId = ctx.message?.chat.id || 0;
+  const chatId = ctx.message.chat.id || 0;
   const url = message.text;
   const role = getUserRole(userId);
 
@@ -61,10 +63,8 @@ bot.on(message('text'), async (ctx) => {
   queueRunner.add(shortHandlerQueue(), context, queueName);
 });
 
-bot.launch(() => {
-  console.log('bot launched');
-});
+bot.start({ onStart: (me) => logger.info('Bot launched', me) });
 
 // Enable graceful stop
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT', () => bot.stop());
+process.once('SIGTERM', () => bot.stop());
