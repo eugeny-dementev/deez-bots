@@ -1,8 +1,8 @@
 import { Action, IAction, QueueContext } from "async-queue-runner"
-import { Telegraf } from "telegraf"
+import { Bot } from 'grammy'
 
 export type NotificationsContext = {
-  bot: Telegraf
+  bot: Bot
   chatId: number
   adminId: number
 }
@@ -37,7 +37,7 @@ export class MultiLineMessage {
 
 export class InjectNotifications extends Action<NotificationsContext> {
   async execute(context: NotificationsContext & QueueContext): Promise<void> {
-    const t = context.bot.telegram;
+    const t = context.bot.api;
 
     let messageId = 0;
     const mlm = new MultiLineMessage();
@@ -51,7 +51,7 @@ export class InjectNotifications extends Action<NotificationsContext> {
 
       if (lastMlm != msg) {
         lastMlm = msg;
-        await t.editMessageText(context.chatId, messageId, undefined, msg);
+        await t.editMessageText(context.chatId, messageId, msg);
       }
     }
 

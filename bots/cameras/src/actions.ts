@@ -2,7 +2,6 @@ import { LoggerOutput, NotificationsOutput, VideoDimensions } from '@libs/action
 import { exec, prepare } from '@libs/command';
 import { Action, QueueContext } from 'async-queue-runner';
 import del from 'del';
-import fs from 'fs/promises';
 import path from 'path';
 import { cameraCorridorUrl, swapDir } from './config.js';
 import {
