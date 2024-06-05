@@ -1,17 +1,16 @@
 import { loggerFactory } from '@libs/actions';
 import { QueueRunner } from 'async-queue-runner';
 import { existsSync } from 'fs';
-import { Telegraf } from 'telegraf';
-import { message } from 'telegraf/filters';
+import { Bot } from 'grammy';
 import { isValidURL } from './helpers';
 import { addMetaTask } from './queue';
 
 const filePath = process.env.TASKS_FILE;
 
-const bot = new Telegraf(process.env.BOT_TOKEN as string);
+const bot = new Bot(process.env.BOT_TOKEN as string);
 
-bot.start((ctx) => ctx.reply('Welcome to Tasks-bot'));
-bot.help((ctx) => ctx.reply('Send me a message and I\'ll add a task for you'));
+bot.command('start', (ctx) => ctx.reply('Welcome to Tasks-bot'));
+bot.command('help', (ctx) => ctx.reply('Send me a message and I\'ll add a task for you'));
 
 const allowedUsers = new Set([
   Number(process.env.USER_ID),
@@ -40,9 +39,9 @@ bot.use(async (ctx, next) => {
   });
 });
 
-bot.on(message('text'), async (ctx) => {
+bot.on('message:text', async (ctx) => {
   const message = ctx.message;
-  const userId = ctx.message?.from.id || 0;
+  const userId = ctx.message.from.id || 0;
 
   console.log('message', message);
 
@@ -59,8 +58,8 @@ bot.on(message('text'), async (ctx) => {
   });
 });
 
-bot.launch(() => logger.info('Bot launched'));
+bot.start({ onStart: (me) => logger.info('Bot launched', me) });
 
 // Enable graceful stop
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT', () => bot.stop());
+process.once('SIGTERM', () => bot.stop());
