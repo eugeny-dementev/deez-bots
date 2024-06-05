@@ -1,9 +1,9 @@
-import { Telegraf } from "telegraf"
+import { Bot } from "grammy"
 
 export type BotContext = {
   userId: number
   chatId: number
-  bot: Telegraf
+  bot: Bot
 }
 
 export type FileContext = {

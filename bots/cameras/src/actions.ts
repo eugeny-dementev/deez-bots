@@ -9,6 +9,7 @@ import {
   BotContext,
   FileContext
 } from './types.js';
+import { InputFile } from 'grammy';
 
 export type DevContext = LoggerOutput & NotificationsOutput;
 
@@ -57,11 +58,11 @@ export class UploadVideo extends Action<VideoDimensions & FileContext & DevConte
     const { filePath, chatId, bot, width, height, tlog, logger } = context
 
     logger.info('Reading file into memory', { filePath })
-    const videoBuffer = await fs.readFile(filePath);
+    const inputFile =  new InputFile(filePath);
 
     logger.info('Uploading video to telegram');
     tlog('Uploading video');
-    await bot.telegram.sendVideo(chatId, { source: videoBuffer }, { width, height });
+    await bot.api.sendVideo(chatId, inputFile, { width, height });
 
     tlog('Video uploaded');
   }
