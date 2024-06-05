@@ -3,18 +3,18 @@ import { exec, prepare } from '@libs/command';
 import { Action, QueueContext } from 'async-queue-runner';
 import del from 'del';
 import expendTilda from 'expand-tilde';
-import fsPromises from 'fs/promises';
 import { glob } from 'glob';
 import path from 'path';
 import { homeDir, storageDir, swapDir } from './config.js';
 import { USER_LIMITS } from './constants.js';
 import { omit } from './helpers.js';
 import {
-  BotContext,
-  LastFileContext,
-  VideoDimensions,
-  VideoDimensionsContext,
+    BotContext,
+    LastFileContext,
+    VideoDimensions,
+    VideoDimensionsContext,
 } from './types.js';
+import { InputFile } from 'grammy';
 
 type CompContext = BotContext & NotificationsOutput & LoggerOutput;
 
@@ -221,10 +221,10 @@ export class DeleteFile extends Action<LastFileContext> {
 
 export class UploadVideo extends Action<CompContext & VideoDimensionsContext & LastFileContext> {
   async execute({ lastFile, bot, width, height, channelId, terr, tlog }: VideoDimensionsContext & CompContext & LastFileContext & QueueContext): Promise<void> {
-    const videoBuffer = await fsPromises.readFile(lastFile);
+    const inputFile = new InputFile(lastFile);
 
     try {
-      await bot.telegram.sendVideo(channelId!, { source: videoBuffer }, { width, height });
+      await bot.api.sendVideo(channelId!, inputFile, { width, height });
     } catch (e) {
       terr(e as Error);
       tlog('Failed to upload video to telegram');
