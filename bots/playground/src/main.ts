@@ -5,6 +5,7 @@ import { adminId, channelId, cookiesPath, publishersIds, token } from './config.
 import { rolesFactory } from './helpers.js';
 import { shortHandlerQueue } from './queues.js';
 import { UserLimitStatus } from './types.js';
+import { loggerFactory } from '@libs/actions';
 
 const bot = new Bot(token);
 
@@ -29,7 +30,10 @@ bot.use(async (ctx, next) => {
   });
 });
 
-const queueRunner = new QueueRunner();
+const logger = loggerFactory();
+const queueRunner = new QueueRunner({
+  logger,
+});
 
 queueRunner.addEndListener((name, size) => {
   console.log(`Queue(${name}) finished. ${size} queues are still running`);
@@ -52,6 +56,7 @@ bot.on('message:text', async (ctx) => {
     adminId,
     userId,
     chatId,
+    logger,
     url,
     bot,
     role,
@@ -64,6 +69,7 @@ bot.on('message:text', async (ctx) => {
 });
 
 bot.start({ onStart: (me) => log('Bot launched') });
+bot.catch((err) => logger.error(err))
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop());

@@ -108,6 +108,7 @@ bot.use((ctx) => {
 })
 
 bot.start({ onStart: (me) => logger.info('Bot launched', me) });
+bot.catch((err) => logger.error(err))
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop());
