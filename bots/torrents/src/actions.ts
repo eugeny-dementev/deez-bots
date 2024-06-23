@@ -9,16 +9,50 @@ import { promisify } from 'util';
 // @ts-ignore
 import parseTorrent from "parse-torrent";
 import { moviesDir, qBitTorrentHost, qRawShowsDir, rawShowsDir, tvshowsDir } from './config.js';
-import { closeBrowser, fileExists, getDirMaps, omit, openBrowser, sleep, wildifySquareBrackets } from './helpers.js';
+import { closeBrowser, fileExists, getDirMaps, omit, openBrowser, russianLetters, russianToEnglish, sleep, wildifySquareBrackets } from './helpers.js';
 import multiTrackRecognizer from './multi-track.js';
 import { getDestination } from './torrent.js';
 import { BotContext, DestContext, MultiTrack, MultiTrackContext, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
+import { FileX } from 'node_modules/@grammyjs/files/out/files.js';
 
 type CompContext = BotContext & LoggerOutput & NotificationsOutput;
 
 const readFile = promisify(fs.readFile);
 const unlink = promisify(fs.unlink);
 
+export type FileContext = {
+  file: FileX,
+  fileName: string,
+};
+export class RenameFile extends Action<CompContext & FileContext> {
+  async execute(context: BotContext & LoggerOutput & NotificationsOutput & FileContext & QueueContext): Promise<void> {
+    const { fileName, extend, logger } = context;
+
+    logger.info('New file', {
+      fileName,
+    });
+
+    const newFileName = fileName
+      .toLowerCase()
+      .split('')
+      .map((char: string) => {
+        if (russianLetters.has(char)) {
+          return russianToEnglish[char as keyof typeof russianToEnglish] || char;
+        } else return char;
+      })
+      .join('')
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9_]/g, '');
+
+    logger.info('File renamed', {
+      fileName: newFileName,
+    });
+
+    extend({
+      fileName: newFileName,
+    });
+  }
+}
 export class AddUploadToQBitTorrent extends lockingClassFactory<CompContext & QBitTorrentContext>('browser') {
   async execute(context: CompContext & QBitTorrentContext & QueueContext) {
     const { qdir, filePath, tlog } = context;
