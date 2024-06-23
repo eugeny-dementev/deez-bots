@@ -1,21 +1,9 @@
 import { QueueRunner } from 'async-queue-runner';
-import expandTilde from 'expand-tilde';
-import * as path from 'path';
 import { Bot, Context } from 'grammy';
 import { FileFlavor, hydrateFiles } from '@grammyjs/files';
-import { adminId, downloadsDir, qMoviesDir, publishersIds, token } from './config.js';
+import { adminId, qMoviesDir, publishersIds, token } from './config.js';
 import { handleQBTFile } from './queue.js';
 import { loggerFactory } from '@libs/actions';
-
-// Map of Russian to English transliteration
-const russianToEnglish = {
-  'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e', 'ж': 'zh',
-  'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
-  'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'c',
-  'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu',
-  'я': 'ya'
-};
-const russianLetters = new Set(Object.keys(russianToEnglish));
 
 const logger = loggerFactory();
 const queue = new QueueRunner({
@@ -99,19 +87,3 @@ bot.catch((err) => logger.error(err))
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop());
 process.once('SIGTERM', () => bot.stop());
-
-function convertRussianToEnglish(text: string) {
-  const convertedText = text
-    .toLowerCase()
-    .split('')
-    .map((char: string) => {
-      if (russianLetters.has(char)) {
-        return russianToEnglish[char as keyof typeof russianToEnglish] || char;
-      } else return char;
-    })
-    .join('')
-    .replace(/\s+/g, '_')
-    .replace(/[^a-z0-9_]/g, '');
-
-  return convertedText;
-}
