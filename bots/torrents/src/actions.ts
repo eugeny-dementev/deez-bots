@@ -1,6 +1,6 @@
 import { LoggerOutput, NotificationsOutput } from '@libs/actions';
 import { exec, prepare } from '@libs/command';
-import { Action, QueueContext } from 'async-queue-runner';
+import { Action, lockingClassFactory, QueueContext } from 'async-queue-runner';
 import * as fs from 'fs';
 import { glob } from 'glob';
 import * as path from "path";
@@ -19,7 +19,7 @@ type CompContext = BotContext & LoggerOutput & NotificationsOutput;
 const readFile = promisify(fs.readFile);
 const unlink = promisify(fs.unlink);
 
-export class AddUploadToQBitTorrent extends Action<CompContext & QBitTorrentContext> {
+export class AddUploadToQBitTorrent extends lockingClassFactory<CompContext & QBitTorrentContext>('browser') {
   async execute(context: CompContext & QBitTorrentContext & QueueContext) {
     const { qdir, filePath, tlog } = context;
 
