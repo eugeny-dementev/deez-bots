@@ -32,7 +32,8 @@ export class RenameFile extends Action<CompContext & FileContext> {
       fileName,
     });
 
-    const newFileName = fileName
+    const filenameObject = path.parse(fileName);
+    const newName = filenameObject.name
       .toLowerCase()
       .split('')
       .map((char: string) => {
@@ -43,6 +44,8 @@ export class RenameFile extends Action<CompContext & FileContext> {
       .join('')
       .replace(/\s+/g, '_')
       .replace(/[^a-z0-9_]/g, '');
+
+    const newFileName = `${newName}.${filenameObject.ext}`;
 
     logger.info('File renamed', {
       fileName: newFileName,
