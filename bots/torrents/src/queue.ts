@@ -5,16 +5,18 @@ import {
   CheckTorrentFile,
   ConvertMultiTrack,
   DeleteFile,
+  DownloadFile,
   ExtractTorrentPattern,
-  Log,
   MonitorDownloadingProgress,
+  RenameFile
 } from './actions.js';
 import { MultiTrackContext } from './types.js';
 
 export const handleQBTFile: () => QueueAction[] = () => [
   InjectLogger,
   InjectNotifications,
-  Log,
+  RenameFile,
+  DownloadFile,
   notifications.tadd('Analyzing torrent'),
   ExtractTorrentPattern,
   CheckTorrentFile,
@@ -23,7 +25,6 @@ export const handleQBTFile: () => QueueAction[] = () => [
       notifications.tlog('Torrent parsed, Multi Track detected'),
     ],
   }),
-  Log,
   notifications.tadd('Adding torrent to download'),
   AddUploadToQBitTorrent,
   notifications.tadd('Start monitoring download progress'),

@@ -71,23 +71,9 @@ bot.on('message:document', async (ctx) => {
   }
 
   const fileName = doc.file_name as string;
-
   const file = await ctx.getFile();
 
-  logger.info('File:', file);
-
-  const filenameObject = path.parse(fileName)
-  const englishFileName = convertRussianToEnglish(filenameObject.name) + filenameObject.ext;
-
-  logger.info('New torrent request:', { fileName, englishFileName });
-
-  const absolutePathDownloadsDir = expandTilde(downloadsDir);
-
-  const destination = path.join(absolutePathDownloadsDir, englishFileName);
-
-  await file.download(destination);
-
-  queue.add(handleQBTFile(), { filePath: destination, bot, logger, adminId: adminChatId, chatId, dir: qMoviesDir });
+  queue.add(handleQBTFile(), { file, fileName, bot, logger, adminId: adminChatId, chatId, dir: qMoviesDir });
 });
 
 bot.use((ctx) => {

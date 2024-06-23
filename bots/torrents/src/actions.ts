@@ -148,7 +148,7 @@ export class CheckTorrentFile extends Action<CompContext & QBitTorrentContext> {
     const torrent = await parseTorrent(file) as Torrent;
 
     if (torrent?.['files']) {
-      context.logger.info('Torrent file', { files:  torrent.files });
+      context.logger.info('Torrent file', { files: torrent.files });
     }
 
     let qdir = '';
