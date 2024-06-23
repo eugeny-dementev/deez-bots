@@ -100,7 +100,7 @@ bot.use((ctx) => {
     if (adminChatId !== chatId) {
       bot.api
         .forwardMessage(adminChatId, chatId, message.message_id)
-        .then(function() { logger.info("mesage forwaded") });
+        .then(function() { logger.info("message forwarded") });
     }
   } catch (e) {
     logger.error(e as Error);
