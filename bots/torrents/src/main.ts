@@ -4,7 +4,7 @@ import * as path from 'path';
 import { Bot, Context } from 'grammy';
 import { FileFlavor, hydrateFiles } from '@grammyjs/files';
 import { adminId, downloadsDir, qMoviesDir, publishersIds, token } from './config.js';
-import { handleQBTFile } from './performances.js';
+import { handleQBTFile } from './queue.js';
 import { loggerFactory } from '@libs/actions';
 
 // Map of Russian to English transliteration
