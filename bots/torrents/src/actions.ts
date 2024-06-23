@@ -6,14 +6,15 @@ import { glob } from 'glob';
 import * as path from "path";
 import { chromium } from 'playwright';
 import { promisify } from 'util';
+import expandTilde from 'expand-tilde';
+import { FileX } from 'node_modules/@grammyjs/files/out/files.js';
 // @ts-ignore
 import parseTorrent from "parse-torrent";
-import { moviesDir, qBitTorrentHost, qRawShowsDir, rawShowsDir, tvshowsDir } from './config.js';
+import { downloadsDir, moviesDir, qBitTorrentHost, qRawShowsDir, rawShowsDir, tvshowsDir } from './config.js';
 import { closeBrowser, fileExists, getDirMaps, omit, openBrowser, russianLetters, russianToEnglish, sleep, wildifySquareBrackets } from './helpers.js';
 import multiTrackRecognizer from './multi-track.js';
 import { getDestination } from './torrent.js';
 import { BotContext, DestContext, MultiTrack, MultiTrackContext, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
-import { FileX } from 'node_modules/@grammyjs/files/out/files.js';
 
 type CompContext = BotContext & LoggerOutput & NotificationsOutput;
 
@@ -56,6 +57,26 @@ export class RenameFile extends Action<CompContext & FileContext> {
     });
   }
 }
+
+export class DownloadFile extends Action<CompContext & FileContext> {
+  async execute(context: BotContext & LoggerOutput & NotificationsOutput & FileContext & QueueContext): Promise<void> {
+    const { fileName, extend, logger, file } = context;
+
+    const absolutePathDownloadsDir = expandTilde(downloadsDir);
+    const destination = path.join(absolutePathDownloadsDir, fileName);
+
+    await file.download(destination);
+
+    logger.info('File downloaded', {
+      fileName,
+    });
+
+    extend({
+      filePath: destination,
+    })
+  }
+}
+
 export class AddUploadToQBitTorrent extends lockingClassFactory<CompContext & QBitTorrentContext>('browser') {
   async execute(context: CompContext & QBitTorrentContext & QueueContext) {
     const { qdir, filePath, tlog } = context;
