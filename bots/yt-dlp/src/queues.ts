@@ -95,7 +95,7 @@ export const shortHandlerQueue: () => QueueAction[] = () => [
       }),
     ],
     else: [
-      shortcut.notify<TimeLimitContext>(({ timeLimitLeft }) => `${formatTime(timeLimitLeft)} left until next post`)
+      notifications.tlog('No valid URL found in the message'),
     ],
   }),
 ];
