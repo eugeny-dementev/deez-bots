@@ -26,8 +26,8 @@ export type SizesParams = {
   error: QueueAction[],
 };
 
-export class YtDlpDownload extends Action<YtDlpPathsContext & YtDlpUrlContext & Partial<NotificationsOutput> & LoggerOutput> {
-  async execute(context: YtDlpPathsContext & YtDlpUrlContext & Partial<NotificationsOutput> & LoggerOutput & QueueContext): Promise<void> {
+export class YtDlpDownload extends Action<YtDlpPathsContext & YtDlpUrlContext & NotificationsOutput & LoggerOutput> {
+  async execute(context: YtDlpPathsContext & YtDlpUrlContext & NotificationsOutput & LoggerOutput & QueueContext): Promise<void> {
     const { url } = context;
 
     context.logger.info('Starting downloading video', { url });
@@ -40,6 +40,7 @@ export class YtDlpDownload extends Action<YtDlpPathsContext & YtDlpUrlContext & 
       .toString();
 
     try {
+      context.tlog('Downloading video');
       await exec(command);
 
       context.logger.info('Video downloaded', { url });
@@ -47,7 +48,7 @@ export class YtDlpDownload extends Action<YtDlpPathsContext & YtDlpUrlContext & 
       const message = parseYtDlpError(stderr as string);
       const error = new Error(message);
       context.logger.error(error);
-      context.terr?.(error);
+      context.terr(error);
 
       context.abort();
     }
