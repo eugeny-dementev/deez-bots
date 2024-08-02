@@ -21,6 +21,32 @@ export type SizesParams = {
   error: QueueAction[],
 };
 
+export class YtDlpDownload extends Action<YtDlpUrlContext & Partial<NotificationsOutput> & LoggerOutput> {
+  async execute(context: YtDlpUrlContext & Partial<NotificationsOutput> & LoggerOutput & QueueContext): Promise<void> {
+    const { url } = context;
+
+    context.logger.info('Starting downloading video', { url });
+
+    const command = prepare('yt-dlp')
+      .add('-S res:1080')
+      .add(context.url)
+      .toString();
+
+    try {
+      await exec(command);
+
+      context.logger.info('Video downloaded', { url });
+    } catch (stderr: unknown) {
+      const message = parseYtDlpError(stderr as string);
+      const error = new Error(message);
+      context.logger.error(error);
+      context.terr?.(error);
+
+      context.abort();
+    }
+  }
+}
+
 export class YtDlpSizes extends Action<YtDlpUrlContext & Partial<NotificationsOutput> & LoggerOutput> {
   async execute(context: YtDlpUrlContext & Partial<NotificationsOutput> & LoggerOutput & QueueContext): Promise<void> {
     const command = prepare('yt-dlp')
