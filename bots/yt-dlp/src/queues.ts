@@ -23,17 +23,16 @@ import { shortcut } from "./shortcuts.js";
 import { BotContext, VideoMetaContext, TimeLimitContext } from "./types.js";
 import { isValidURL } from "./validators.js";
 import { homeDir, storageDir } from "./config.js";
-import { InjectLogger, InjectNotifications } from "@libs/actions";
+import { InjectLogger, InjectNotifications, notifications } from "@libs/actions";
 
 export const shortHandlerQueue: () => QueueAction[] = () => [
   InjectLogger,
   InjectNotifications,
-  Log,
   CalcTimeLeft,
-  Log,
-  SetLimitStatus,
+  notifications.tlog('Message received'),
   util.if<BotContext>(({ url }) => isValidURL(url), {
     then: [
+      notifications.tlog('Valid URL'),
       util.if<TimeLimitContext>(({ timeLimitLeft }) => timeLimitLeft === 0, {
         then: [
           shortcut.notify('Message received'),
