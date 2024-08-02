@@ -31,11 +31,15 @@ export class YtDlpSizes extends Action<YtDlpSizesContext & Partial<Notifications
       .toString();
 
     try {
+      context.logger.info('Checking URL', { url: context.url });
+
       const stdout = await exec(command);
 
       const sizes = parseFormatsListing(stdout);
 
       context.extend({ sizes } as YtDlpSizesOutput);
+
+      context.logger.info('Found YtDlpSizes', { sizes });
     } catch (stderr: unknown) {
       const message = parseYtDlpError(stderr as string);
       const error = new Error(message);
