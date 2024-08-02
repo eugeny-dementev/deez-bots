@@ -23,8 +23,11 @@ import { shortcut } from "./shortcuts.js";
 import { BotContext, VideoMetaContext, TimeLimitContext } from "./types.js";
 import { isValidURL } from "./validators.js";
 import { homeDir, storageDir } from "./config.js";
+import { InjectLogger, InjectNotifications } from "@libs/actions";
 
 export const shortHandlerQueue: () => QueueAction[] = () => [
+  InjectLogger,
+  InjectNotifications,
   Log,
   CalcTimeLeft,
   Log,
