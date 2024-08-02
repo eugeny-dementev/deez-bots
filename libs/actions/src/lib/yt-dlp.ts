@@ -1,11 +1,10 @@
 import { exec, prepare } from '@libs/command';
 import { Action, QueueAction, QueueContext } from "async-queue-runner";
 import { NotificationsOutput } from './notifications';
-import { ILogger } from './logger';
+import { LoggerOutput } from './logger';
 
-export type YtDlpSizesContext = {
+export type YtDlpUrlContext = {
   url: string,
-  logger: ILogger
 }
 
 export type FormatListing = {
@@ -22,8 +21,8 @@ export type SizesParams = {
   error: QueueAction[],
 };
 
-export class YtDlpSizes extends Action<YtDlpSizesContext & Partial<NotificationsOutput>> {
-  async execute(context: YtDlpSizesContext & Partial<NotificationsOutput> & QueueContext): Promise<void> {
+export class YtDlpSizes extends Action<YtDlpUrlContext & Partial<NotificationsOutput> & LoggerOutput> {
+  async execute(context: YtDlpUrlContext & Partial<NotificationsOutput> & LoggerOutput & QueueContext): Promise<void> {
     const command = prepare('yt-dlp')
       .add('--no-download')
       .add('--list-formats')
