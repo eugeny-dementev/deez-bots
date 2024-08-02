@@ -7,6 +7,11 @@ export type YtDlpUrlContext = {
   url: string,
 }
 
+export type YtDlpPathsContext = {
+  home: string,
+  temp: string,
+}
+
 export type FormatListing = {
   res: number,
   size: number,
@@ -21,14 +26,16 @@ export type SizesParams = {
   error: QueueAction[],
 };
 
-export class YtDlpDownload extends Action<YtDlpUrlContext & Partial<NotificationsOutput> & LoggerOutput> {
-  async execute(context: YtDlpUrlContext & Partial<NotificationsOutput> & LoggerOutput & QueueContext): Promise<void> {
+export class YtDlpDownload extends Action<YtDlpPathsContext & YtDlpUrlContext & Partial<NotificationsOutput> & LoggerOutput> {
+  async execute(context: YtDlpPathsContext & YtDlpUrlContext & Partial<NotificationsOutput> & LoggerOutput & QueueContext): Promise<void> {
     const { url } = context;
 
     context.logger.info('Starting downloading video', { url });
 
     const command = prepare('yt-dlp')
       .add('-S res:1080')
+      .add(`--paths home:${context.home}`)
+      .add(`--paths temp:${context.temp}`)
       .add(context.url)
       .toString();
 
