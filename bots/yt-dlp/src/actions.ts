@@ -72,8 +72,8 @@ export class PrepareYtDlpName extends Action<CompContext> {
   }
 }
 
-export class FindFile extends Action<BotContext> {
-  async execute({ userId, extend, destFileName }: BotContext & QueueContext): Promise<void> {
+export class FindFile extends Action<CompContext> {
+  async execute({ logger, extend, destFileName }: CompContext & QueueContext): Promise<void> {
 
     if (!homeDir) throw new Error('No home dir found');
 
@@ -89,6 +89,11 @@ export class FindFile extends Action<BotContext> {
     }
 
     const lastFile = files[0];
+
+    logger.info('File for conversion downloaded:', {
+      destFileName,
+      lastFile,
+    });
 
     extend({ lastFile });
   }
