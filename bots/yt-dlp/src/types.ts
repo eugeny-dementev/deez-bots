@@ -50,7 +50,8 @@ export type VideoDimensionsContext = {
 };
 
 export type VideoMetaContext = {
-  videoMeta: ReturnType<typeof parseFormatsListing>,
+  sizes: ReturnType<typeof parseFormatsListing>,
+  home: string;
 }
 
 export type LinkType = 'reel' | 'short' | 'reddit'
