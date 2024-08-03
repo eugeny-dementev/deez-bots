@@ -143,34 +143,6 @@ export class ExtractVideoDimensions extends Action<CommandContext> {
   }
 }
 
-export class ExecuteCommand extends Action<CommandContext> {
-  delay: number = 1000;
-
-  async execute(context: CommandContext & QueueContext): Promise<void> {
-    return new Promise((res, rej) => {
-      if (!context.command) {
-        rej('Command not found in the context');
-
-        return;
-      }
-
-      shelljs.exec(context.command!, { async: true }, (code, stdout, stderr) => {
-        delete context.command;
-
-        if (code === 0) {
-          res();
-
-          context.extend({ stdout });
-
-          return;
-        }
-
-        rej(stderr.toString());
-      });
-    });
-  }
-}
-
 export class DeleteFile extends Action<LastFileContext> {
   async execute({ lastFile }: LastFileContext): Promise<void> {
     await del(lastFile, { force: true });
