@@ -5,81 +5,13 @@ import { glob } from 'glob';
 import path from 'path';
 import shelljs from 'shelljs';
 import { homeDir, storageDir, swapDir } from './config.js';
-import { USER_LIMITS } from './constants.js';
-import { omit, parseFormatsListing } from './helpers.js';
+import { parseFormatsListing } from './helpers.js';
 import {
   BotContext,
-  CommandContext,
-  FContextMessage,
-  LastFileContext,
-  NotificationOptions,
-  VideoDimensions,
-  VideoDimensionsContext,
+  CommandContext, LastFileContext, VideoDimensions,
+  VideoDimensionsContext
 } from './types.js';
 import { InputFile } from 'grammy';
-
-export class Notification<C> extends Action<BotContext> {
-  message: string | FContextMessage<C & BotContext>;
-  options: NotificationOptions = { update: false, silent: true };
-
-  constructor(message: string | FContextMessage<C & BotContext>, options: Partial<NotificationOptions> = {}) {
-    super();
-
-    this.message = message;
-    Object.assign(this.options, options);
-  }
-
-  async execute(context: C & BotContext & QueueContext): Promise<void> {
-    const { chatId, bot } = context;
-
-    const msg: string = typeof this.message === 'function'
-      ? await this.message(context)
-      : this.message;
-
-    bot.api.sendMessage(chatId, msg, { disable_notification: this.options.silent });
-  }
-}
-
-export class CalcTimeLeft extends Action<BotContext> {
-  async execute(context: BotContext & QueueContext): Promise<void> {
-    const { userId, role, limitsStatus, extend } = context;
-
-    const currentUserLimit = USER_LIMITS[role];
-
-    let timeLimitLeft = 0;
-
-    if (limitsStatus[userId]) {
-      timeLimitLeft = Math.max(timeLimitLeft, currentUserLimit - (Date.now() - limitsStatus[userId]));
-    }
-
-    if (timeLimitLeft <= 1000) timeLimitLeft = 0;
-
-    extend({ timeLimitLeft });
-  }
-}
-
-export class SetLimitStatus extends Action<BotContext> {
-  async execute(context: BotContext & QueueContext): Promise<void> {
-    const { userId, limitsStatus } = context;
-
-    limitsStatus[userId] = Date.now();
-  }
-}
-
-export class DeleteLimitStatus extends Action<BotContext> {
-  async execute(context: BotContext & QueueContext): Promise<void> {
-    const { userId, limitsStatus } = context;
-
-    delete limitsStatus[userId];
-  }
-}
-
-export class Log extends Action<any> {
-  async execute(context: any): Promise<void> {
-    // console.log(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name', 'stdout'));
-    console.log(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name'));
-  }
-}
 
 export class CleanUpUrl extends Action<BotContext> {
   async execute({ url, extend }: BotContext & QueueContext): Promise<void> {
@@ -115,7 +47,7 @@ export class CheckVideoSize extends Action<CommandContext> {
 
       if (Array.isArray(metas) && metas.length > 0)
 
-      videoMeta = metas;
+        videoMeta = metas;
 
     } catch (e) {
       console.error(e);
