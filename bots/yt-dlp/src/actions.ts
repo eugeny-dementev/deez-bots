@@ -6,7 +6,7 @@ import { glob } from 'glob';
 import { InputFile } from 'grammy';
 import path from 'path';
 import shelljs from 'shelljs';
-import { homeDir, maxRes, minRes, storageDir } from './config.js';
+import { homeDir, maxRes, minRes } from './config.js';
 import {
   BotContext,
   CommandContext,
@@ -27,31 +27,6 @@ export class CleanUpUrl extends Action<BotContext> {
 }
 
 type CompContext = BotContext & LoggerOutput & NotificationsOutput;
-
-export class FindMainFile extends Action<CompContext> {
-  async execute(context: CompContext & QueueContext): Promise<void> {
-    const { extend, destFileName } = context;
-
-    if (!storageDir) throw new Error('No storage dir found');
-
-    let homePath = storageDir;
-
-    if (homePath.includes('~')) homePath = expendTilda(homePath);
-
-    const pattern = path.join(homePath, `${destFileName}.*`);
-    const files = await glob.glob(pattern, { windowsPathsNoEscape: true });
-
-    if (files.length === 0) {
-      context.tlog('Failed to find file for conversion');
-      context.abort();
-      return;
-    }
-
-    const mainFile = files[0];
-
-    extend({ globPattern: pattern, globFiles: files, mainFile });
-  }
-}
 
 export class PrepareYtDlpMaxRes extends Action<VideoMetaContext & CompContext> {
   async execute(context: VideoMetaContext & CompContext & QueueContext): Promise<void> {
