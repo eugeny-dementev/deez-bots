@@ -58,7 +58,7 @@ export class CheckVideoSize extends Action<CommandContext> {
   }
 }
 
-export class YtDlpPrepareMaxRes extends Action<VideoMetaContext & CompContext> {
+export class PrepareYtDlpMaxRes extends Action<VideoMetaContext & CompContext> {
   async execute(context: VideoMetaContext & CompContext & QueueContext): Promise<void> {
     const { sizes } = context;
 
@@ -74,7 +74,7 @@ export class YtDlpPrepareMaxRes extends Action<VideoMetaContext & CompContext> {
   }
 }
 
-export class YtDlpPrepareMinRes extends Action<VideoMetaContext & CompContext> {
+export class PrepareYtDlpMinRes extends Action<VideoMetaContext & CompContext> {
   async execute(context: VideoMetaContext & CompContext & QueueContext): Promise<void> {
     const { sizes } = context;
 
