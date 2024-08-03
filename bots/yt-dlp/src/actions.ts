@@ -58,25 +58,19 @@ export class CheckVideoSize extends Action<CommandContext> {
   }
 }
 
-export class PrepareYtDlpCommand extends Action<BotContext> {
-  async execute({ url, destDir, cookiesPath, extend, userId, destFileName }: BotContext & QueueContext & { destDir: string }): Promise<void> {
-    if (!destDir) throw Error('No destDir specified');
+export class YtDlpPrepareMaxRes extends Action<VideoMetaContext & CompContext> {
+  async execute(context: VideoMetaContext & CompContext & QueueContext): Promise<void> {
+    const { sizes } = context;
 
-    const userHomeDir = path.join(destDir, destDir == homeDir ? String(userId) : '');
+    const maxAvailableRes = sizes.sort((a, b) => a.res - b.res).pop()!.res;
 
-    const commandArr: string[] = [];
+    context.logger.debug('Sises:', { maxAvailableRes });
 
-    commandArr.push(`yt-dlp -S "res:${destDir === storageDir ? '1080' : '480'}"`)
-    commandArr.push(`--paths home:${userHomeDir}`)
-    commandArr.push(`--paths temp:${swapDir}`);
-    commandArr.push(`--cookies ${cookiesPath}`);
-    if (destDir === homeDir) commandArr.push(`--output "${destFileName}.%(ext)s"`);
-    else commandArr.push(`--output "${destFileName}.%(title)s.%(ext)s"`);
-    commandArr.push(url);
+    const chosenMaxRes = Math.min(maxAvailableRes, maxRes);
 
-    const command = commandArr.join(' ');
+    context.logger.info('Chosen max resolution:', { res: chosenMaxRes });
 
-    extend({ command });
+    context.extend({ ydres: chosenMaxRes });
   }
 }
 
