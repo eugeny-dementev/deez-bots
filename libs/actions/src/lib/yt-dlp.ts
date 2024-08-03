@@ -50,6 +50,7 @@ export class YtDlpDownload extends Action<YtDlpDownloadContext & YtDlpUrlContext
     try {
       context.tlog('Downloading video');
       await exec(command);
+      context.tlog('Video downloaded');
 
       context.logger.info('Video downloaded', { url });
     } catch (stderr: unknown) {
