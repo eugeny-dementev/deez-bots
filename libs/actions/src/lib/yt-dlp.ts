@@ -8,9 +8,10 @@ export type YtDlpUrlContext = {
 }
 
 export type YtDlpDownloadContext = {
-  home: string,
-  temp: string,
-  res?: number,
+  ydhome?: string,
+  ydtemp?: string,
+  ydres?: number,
+  ydname?: string,
 }
 
 export type FormatListing = {
@@ -34,11 +35,17 @@ export class YtDlpDownload extends Action<YtDlpDownloadContext & YtDlpUrlContext
     context.logger.info('Starting downloading video', { url });
 
     const command = prepare('yt-dlp')
-      .add(`-S res:${context.res || 1080}`)
-      .add(`--paths home:${context.home}`)
-      .add(`--paths temp:${context.temp}`)
+      .add(`-S res:${context.ydres || 1080}`)
+      .add(`--paths home:${context.ydhome}`)
+      .add(`--paths temp:${context.ydtemp}`)
       .add(context.url)
+      .add(`--output ${context.ydname}`, Boolean(context.ydname))
       .toString();
+
+    delete context.ydres;
+    delete context.ydhome;
+    delete context.ydtemp;
+    delete context.ydname;
 
     try {
       context.tlog('Downloading video');
