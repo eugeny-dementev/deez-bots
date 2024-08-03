@@ -94,6 +94,14 @@ export class PrepareYtDlpMinRes extends Action<VideoMetaContext & CompContext> {
   }
 }
 
+export class PrepareYtDlpName extends Action<CompContext> {
+  async execute(context: CompContext & QueueContext): Promise<void> {
+    const { destFileName } = context;
+
+    context.extend({ ydname: destFileName });
+  }
+}
+
 export class FindFile extends Action<BotContext> {
   async execute({ userId, extend, destFileName }: BotContext & QueueContext): Promise<void> {
 
