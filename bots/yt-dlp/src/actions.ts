@@ -81,7 +81,7 @@ export class FindFile extends Action<BotContext> {
 
     if (homePath.includes('~')) homePath = expendTilda(homePath);
 
-    const pattern = path.join(homePath, String(userId), `${destFileName}.*`);
+    const pattern = path.join(homePath, `${destFileName}.*`);
     const files = await glob.glob(pattern, { windowsPathsNoEscape: true });
 
     if (files.length === 0) {
