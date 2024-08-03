@@ -14,7 +14,6 @@ import {
   PrepareYtDlpMaxRes,
   PrepareYtDlpMinRes,
   PrepareYtDlpName,
-  SetChatIdToChannelId,
   UploadVideo
 } from "./actions.js";
 import { homeDir, storageDir, swapDir } from "./config.js";
@@ -36,7 +35,6 @@ export const shortHandlerQueue: () => QueueAction[] = () => [
           shortcut.extend({ ydhome: storageDir, ydtemp: swapDir }),
           PrepareYtDlpMaxRes,
           YtDlpDownload,
-          SetChatIdToChannelId,
           util.if<BotContext>(({ channelId }) => Boolean(channelId), {
             then: [
               notifications.tadd('Prepareing video for uploading'),
