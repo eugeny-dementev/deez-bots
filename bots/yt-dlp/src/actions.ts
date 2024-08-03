@@ -24,34 +24,28 @@ export class CleanUpUrl extends Action<BotContext> {
 
 type CompContext = BotContext & LoggerOutput & NotificationsOutput;
 
-    commandArr.push(`yt-dlp`)
-    commandArr.push('--list-formats')
-    commandArr.push(`--cookies ${cookiesPath}`);
-    commandArr.push(url);
+export class FindMainFile extends Action<CompContext> {
+  async execute(context: CompContext & QueueContext): Promise<void> {
+    const { extend, destFileName } = context;
 
-    const command = commandArr.join(' ');
+    if (!storageDir) throw new Error('No storage dir found');
 
-    extend({ command });
-  }
-}
+    let homePath = storageDir;
 
-export class CheckVideoSize extends Action<CommandContext> {
-  async execute({ stdout, extend }: CommandContext & QueueContext): Promise<void> {
-    let videoMeta: ReturnType<typeof parseFormatsListing> = [];
+    if (homePath.includes('~')) homePath = expendTilda(homePath);
 
-    try {
-      const metas = parseFormatsListing(stdout);
+    const pattern = path.join(homePath, `${destFileName}.*`);
+    const files = await glob.glob(pattern, { windowsPathsNoEscape: true });
 
-      if (Array.isArray(metas) && metas.length > 0)
-
-        videoMeta = metas;
-
-    } catch (e) {
-      console.error(e);
-      console.log(stdout);
+    if (files.length === 0) {
+      context.tlog('Failed to find file for conversion');
+      context.abort();
+      return;
     }
 
-    extend({ videoMeta });
+    const mainFile = files[0];
+
+    extend({ globPattern: pattern, globFiles: files, mainFile });
   }
 }
 
