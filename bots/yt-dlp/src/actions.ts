@@ -35,6 +35,10 @@ export class PrepareYtDlpMaxRes extends Action<VideoMetaContext & CompContext> {
 
     context.logger.debug('Sises:', { maxAvailableRes });
 
+    context.logger.debug('Choosing max of two resolutions', {
+      configMaxRes: maxRes,
+      videoMaxRes: maxAvailableRes,
+    });
     const chosenMaxRes = Math.min(maxAvailableRes, maxRes);
 
     context.logger.info('Chosen max resolution:', { res: chosenMaxRes });
@@ -53,13 +57,25 @@ export class PrepareYtDlpMinRes extends Action<VideoMetaContext & CompContext> {
 
     if (!minAvailableRes || minAvailableRes < minRes) {
       context.tlog('No suitable file sizes for desired resolution');
+      context.logger.info('No suitable file sizes for desired resolution', {
+        minAvailableRes,
+      });
       context.abort();
       return;
     }
 
     context.logger.debug('Sises:', { minAvailableRes });
 
-    context.extend({ ydres: Math.min(minAvailableRes, minRes) });
+    context.logger.debug('Choose min or two resolutions', {
+      configMinRes: minRes,
+      videoMinRes: minAvailableRes,
+    });
+
+    const chosenMinRes = Math.min(minAvailableRes, minRes);
+
+    context.logger.info('Chosen min resolution', { res: chosenMinRes });
+
+    context.extend({ ydres: chosenMinRes });
   }
 }
 
