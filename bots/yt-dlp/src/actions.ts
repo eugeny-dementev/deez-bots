@@ -1,15 +1,14 @@
 import { LoggerOutput, NotificationsOutput } from '@libs/actions';
+import { exec, prepare } from '@libs/command';
 import { Action, QueueContext } from 'async-queue-runner';
 import del from 'del';
 import expendTilda from 'expand-tilde';
 import { glob } from 'glob';
 import { InputFile } from 'grammy';
 import path from 'path';
-import shelljs from 'shelljs';
 import { homeDir, maxRes, minRes } from './config.js';
 import {
   BotContext,
-  CommandContext,
   LastFileContext,
   VideoDimensions,
   VideoDimensionsContext,
@@ -53,7 +52,7 @@ export class PrepareYtDlpMinRes extends Action<VideoMetaContext & CompContext> {
       .sort((a, b) => a.res - b.res).pop()?.res;
 
     if (!minAvailableRes || minAvailableRes < minRes) {
-      context.tadd('No suitable file sizes for desired resolution');
+      context.tlog('No suitable file sizes for desired resolution');
       context.abort();
       return;
     }
@@ -99,20 +98,44 @@ export class FindFile extends Action<CompContext> {
   }
 }
 
-export class PrepareConvertCommand extends Action<LastFileContext> {
-  async execute({ lastFile, extend }: LastFileContext & QueueContext): Promise<void> {
+export class ConvertVideo extends Action<LastFileContext & CompContext> {
+  async execute({ lastFile, abort, url, extend, terr, tadd, tlog }: LastFileContext & CompContext & QueueContext): Promise<void> {
     const fileData = path.parse(lastFile);
-    const newFileName = `new_${fileData.name}`;
+    const newFileName = `${fileData.name}.new`;
     const newFilePath = path.join(fileData.dir, `${newFileName}.mp4`);
-    // ffmpeg -i ./YKUNMpHk_cs.any ./new_YKUNMpHk_cs.mp4
-    const command = `ffmpeg -i ${lastFile} -c:v libx264 -crf 28 -preset veryslow -c:a copy ${newFilePath}`;
 
-    extend({ command, destFileName: newFileName });
+    const command = prepare('ffmpeg')
+      .add(`-i ${lastFile}`)
+      .add('-c:v libx264')
+      .add('-crf 28')
+      .add('-preset veryslow')
+      .add('-c:a copy')
+      .add(newFilePath)
+      .toString();
+
+    try {
+      tadd('Converting video for uploading');
+
+      await exec(command);
+      await del(lastFile, { force: true });
+      extend({ lastFile: newFilePath });
+
+      tlog('Video ready for uploading');
+    } catch (stderr: unknown) {
+      if (typeof stderr === 'string') {
+        terr('Failed to convert video ' + url);
+      } else {
+        terr(stderr as Error);
+      }
+
+      tlog('Failed to download video');
+      abort();
+    }
   }
 }
 
-export class PrepareVideoDimensionsCommand extends Action<LastFileContext> {
-  async execute({ lastFile, extend }: LastFileContext & QueueContext): Promise<void> {
+export class ExtractVideoDimensions extends Action<CompContext & LastFileContext> {
+  async execute({ lastFile, extend, terr, tlog }: LastFileContext & CompContext & QueueContext): Promise<void> {
     // command
     // ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1 .\YKUNMpHk_cs.mp4
     //
@@ -121,25 +144,29 @@ export class PrepareVideoDimensionsCommand extends Action<LastFileContext> {
     // height=1280
     const command = `ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1 ${lastFile}`
 
-    extend({ command });
-  }
-}
+    try {
+      const stdout = await exec(command);
+      const { width, height } = stdout
+        .trim()
+        .split('\n').map(s => s.trim())
+        .map((str: string): string[] => str.split('=').map(s => s.trim()))
+        .reduce<VideoDimensions>((obj: VideoDimensions, pair: string[]): VideoDimensions => {
+          const field = pair[0] as 'width' | 'height';
+          const value = Number(pair[1]);
+          obj[field] = value;
 
-export class ExtractVideoDimensions extends Action<CommandContext> {
-  async execute({ stdout, extend }: CommandContext & QueueContext): Promise<void> {
-    const { width, height } = stdout
-      .trim()
-      .split('\n').map(s => s.trim())
-      .map((str: string): string[] => str.split('=').map(s => s.trim()))
-      .reduce<VideoDimensions>((obj: VideoDimensions, pair: string[]): VideoDimensions => {
-        const field = pair[0] as 'width' | 'height';
-        const value = Number(pair[1]);
-        obj[field] = value;
+          return obj;
+        }, {} as VideoDimensions);
 
-        return obj;
-      }, {} as VideoDimensions);
-
-    extend({ width, height });
+      extend({ width, height });
+    } catch (e: unknown) {
+      if (typeof e === 'string') {
+        tlog('Failed to extract video dimensions');
+        terr(e);
+      } else {
+        terr(e as Error);
+      }
+    }
   }
 }
 
