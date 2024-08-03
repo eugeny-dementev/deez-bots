@@ -22,9 +22,7 @@ export class CleanUpUrl extends Action<BotContext> {
   }
 }
 
-export class GetVideoFormatsListingCommand extends Action<BotContext> {
-  async execute({ url, cookiesPath, extend }: BotContext & QueueContext): Promise<void> {
-    const commandArr: string[] = [];
+type CompContext = BotContext & LoggerOutput & NotificationsOutput;
 
     commandArr.push(`yt-dlp`)
     commandArr.push('--list-formats')
