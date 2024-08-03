@@ -106,7 +106,7 @@ export class PrepareConvertCommand extends Action<LastFileContext> {
   }
 }
 
-export class PreapreVideoDimentionsCommand extends Action<LastFileContext> {
+export class PrepareVideoDimensionsCommand extends Action<LastFileContext> {
   async execute({ lastFile, extend }: LastFileContext & QueueContext): Promise<void> {
     // command
     // ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1 .\YKUNMpHk_cs.mp4
@@ -120,7 +120,7 @@ export class PreapreVideoDimentionsCommand extends Action<LastFileContext> {
   }
 }
 
-export class ExtractVideoDimentions extends Action<CommandContext> {
+export class ExtractVideoDimensions extends Action<CommandContext> {
   async execute({ stdout, extend }: CommandContext & QueueContext): Promise<void> {
     const { width, height } = stdout
       .trim()
