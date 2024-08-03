@@ -90,7 +90,7 @@ export class FindFile extends Action<BotContext> {
 
     const lastFile = files[0];
 
-    extend({ globPattern: pattern, globFiles: files, lastFile });
+    extend({ lastFile });
   }
 }
 
