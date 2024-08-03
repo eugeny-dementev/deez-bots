@@ -4,8 +4,7 @@ import expendTilda from 'expand-tilde';
 import { glob } from 'glob';
 import path from 'path';
 import shelljs from 'shelljs';
-import { homeDir, storageDir, swapDir } from './config.js';
-import { parseFormatsListing } from './helpers.js';
+import { homeDir, maxRes, minRes, storageDir } from './config.js';
 import {
   BotContext,
   CommandContext, LastFileContext, VideoDimensions,
