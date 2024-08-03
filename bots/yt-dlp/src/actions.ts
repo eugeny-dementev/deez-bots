@@ -157,8 +157,10 @@ export class UploadVideo extends Action<BotContext & VideoDimensionsContext & La
   }
 }
 
-export class SetChatIdToChannelId extends Action<BotContext> {
-  async execute({ chatId, extend }: BotContext & QueueContext): Promise<void> {
+export class SetChatIdToChannelId extends Action<CompContext> {
+  async execute({ logger, chatId, extend }: CompContext & QueueContext): Promise<void> {
+    logger.info('Setting channldId to chatId', { chatId });
+
     extend({ channelId: chatId });
   }
 }
