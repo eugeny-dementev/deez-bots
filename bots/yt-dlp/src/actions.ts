@@ -74,25 +74,23 @@ export class YtDlpPrepareMaxRes extends Action<VideoMetaContext & CompContext> {
   }
 }
 
-export class FindMainFile extends Action<BotContext> {
-  async execute({ extend, destFileName }: BotContext & QueueContext): Promise<void> {
+export class YtDlpPrepareMinRes extends Action<VideoMetaContext & CompContext> {
+  async execute(context: VideoMetaContext & CompContext & QueueContext): Promise<void> {
+    const { sizes } = context;
 
-    if (!storageDir) throw new Error('No storage dir found');
+    const minAvailableRes = sizes
+      .filter(({ size }) => size < 49.9)
+      .sort((a, b) => a.res - b.res).pop()?.res;
 
-    let homePath = storageDir;
-
-    if (homePath.includes('~')) homePath = expendTilda(homePath);
-
-    const pattern = path.join(homePath, `${destFileName}.*`);
-    const files = await glob.glob(pattern, { windowsPathsNoEscape: true });
-
-    if (files.length === 0) {
+    if (!minAvailableRes || minAvailableRes < minRes) {
+      context.tadd('No suitable file sizes for desired resolution');
+      context.abort();
       return;
     }
 
-    const mainFile = files[0];
+    context.logger.debug('Sises:', { minAvailableRes });
 
-    extend({ globPattern: pattern, globFiles: files, mainFile });
+    context.extend({ ydres: Math.min(minAvailableRes, minRes) });
   }
 }
 
