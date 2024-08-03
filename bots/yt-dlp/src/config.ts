@@ -15,3 +15,6 @@ export const publishersIds = String(process.env.PUBLISHERS_IDS)
 export const adminId = Number(process.env.ADMIN_ID);
 
 export const cookiesPath = process.env.COOKIES_PATH;
+
+export const maxRes = Number(process.env.MAX_RES);
+export const minRes = Number(process.env.MIN_RES);
