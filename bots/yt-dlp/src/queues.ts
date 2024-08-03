@@ -1,97 +1,58 @@
+import {
+  InjectLogger,
+  InjectNotifications,
+  YtDlpDownload,
+  YtDlpSizes,
+  notifications,
+} from "@libs/actions";
 import { QueueAction, util } from "async-queue-runner";
 import {
-  CalcTimeLeft,
-  CheckVideoSize,
-  CleanUpUrl,
+  ConvertVideo,
   DeleteFile,
-  DeleteLimitStatus,
-  ExecuteCommand,
-  ExtractVideoDimentions,
+  ExtractVideoDimensions,
   FindFile,
-  FindMainFile,
-  GetVideoFormatsListingCommand,
-  Log,
-  PreapreVideoDimentionsCommand,
-  PrepareConvertCommand,
-  PrepareYtDlpCommand,
+  PrepareYtDlpMaxRes,
+  PrepareYtDlpMinRes,
+  PrepareYtDlpName,
   SetChatIdToChannelId,
-  UploadVideo,
+  UploadVideo
 } from "./actions.js";
-import { formatTime } from "./helpers.js";
+import { homeDir, storageDir, swapDir } from "./config.js";
 import { shortcut } from "./shortcuts.js";
-import { BotContext, VideoMetaContext, TimeLimitContext } from "./types.js";
+import { BotContext, VideoMetaContext } from "./types.js";
 import { isValidURL } from "./validators.js";
-import { homeDir, storageDir } from "./config.js";
-import { InjectLogger, InjectNotifications, notifications } from "@libs/actions";
 
 export const shortHandlerQueue: () => QueueAction[] = () => [
   InjectLogger,
   InjectNotifications,
-  CalcTimeLeft,
   notifications.tlog('Message received'),
   util.if<BotContext>(({ url }) => isValidURL(url), {
     then: [
-      notifications.tlog('Valid URL'),
-      shortcut.notify('Message received'),
-      CleanUpUrl,
-      GetVideoFormatsListingCommand,
-      ExecuteCommand,
-      CheckVideoSize,
-      Log,
-      util.if<VideoMetaContext>(({ videoMeta }) => videoMeta.length > 0, {
+      notifications.tlog('Valid URL detected'),
+      YtDlpSizes,
+      util.if<VideoMetaContext>(({ sizes }) => sizes.length > 0, {
         then: [
-          shortcut.extend({ title: true }),
-          shortcut.extend({ destDir: storageDir }),
-          PrepareYtDlpCommand,
-          Log,
-          shortcut.notify('Downloading full video to storage'),
-          ExecuteCommand,
-          FindMainFile,
-          Log,
-          util.if<VideoMetaContext>(({ videoMeta }) => Boolean(videoMeta.find(({ size, res }) => res >= 400 && res <= 500 && size < 50.0)), {
+          notifications.tadd('Starting downloading video'),
+          shortcut.extend({ ydhome: storageDir, ydtemp: swapDir }),
+          PrepareYtDlpMaxRes,
+          YtDlpDownload,
+          SetChatIdToChannelId,
+          util.if<BotContext>(({ channelId }) => Boolean(channelId), {
             then: [
-              shortcut.extend({ title: false }),
-              shortcut.extend({ destDir: homeDir }),
-              PrepareYtDlpCommand,
-              Log,
-              shortcut.notify('Downloading video for telegram'),
-              ExecuteCommand,
+              notifications.tadd('Prepareing video for uploading'),
+              shortcut.extend({ ydhome: homeDir, ydtemp: swapDir }),
+              PrepareYtDlpName,
+              PrepareYtDlpMinRes,
+              YtDlpDownload,
               FindFile,
-              PrepareConvertCommand,
-              Log,
-              shortcut.notify('Start compressing video for telegram'),
-              ExecuteCommand,
+              ConvertVideo,
+              ExtractVideoDimensions,
+              UploadVideo,
               DeleteFile,
-              FindFile,
-              Log,
-              PreapreVideoDimentionsCommand,
-              Log,
-              ExecuteCommand,
-              ExtractVideoDimentions,
-              Log,
-              util.if<BotContext>(({ channelId }) => Boolean(channelId), {
-                then: [
-                  Log,
-                  UploadVideo,
-                  shortcut.notify('Video uploaded to the telegram'),
-                ],
-                else: [
-                  DeleteLimitStatus,
-                  SetChatIdToChannelId,
-                  Log,
-                  UploadVideo,
-                ],
-              }),
-              DeleteFile,
-            ],
-            else: [
-              shortcut.notify('Video is too big for telegram'),
             ],
           }),
         ],
-        else: [
-          shortcut.notify('No video to download'),
-        ],
+        else: [],
       }),
     ],
     else: [
