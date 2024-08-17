@@ -35,7 +35,7 @@ export function omit(obj: object, ...keys: string[]) {
 
 export function getLinkType(url: string): 'reel' | 'short' | 'reddit' | 'vk' | null {
   if (isValidVKURL(url)) return 'vk';
-  if (isValidReelURL(url)) return 'reel';
+  // if (isValidReelURL(url)) return 'reel';
   if (isValidShortURL(url)) return 'short';
   if (isValidRedditURL(url)) return 'reddit';
   return null;
