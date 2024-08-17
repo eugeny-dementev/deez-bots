@@ -1,5 +1,5 @@
 import { UserRole } from './types.js';
-import { isValidRedditURL, isValidReelURL, isValidShortURL } from './validators.js';
+import { isValidRedditURL, isValidReelURL, isValidShortURL, isValidVKURL } from './validators.js';
 
 export function rolesFactory(adminId: number, publishersIds: number[]) {
   const publishersIdsSet = new Set(publishersIds);
@@ -33,7 +33,8 @@ export function omit(obj: object, ...keys: string[]) {
   return Object.fromEntries(entries);
 }
 
-export function getLinkType(url: string): 'reel' | 'short' | 'reddit' | null {
+export function getLinkType(url: string): 'reel' | 'short' | 'reddit' | 'vk' | null {
+  if (isValidVKURL(url)) return 'vk';
   if (isValidReelURL(url)) return 'reel';
   if (isValidShortURL(url)) return 'short';
   if (isValidRedditURL(url)) return 'reddit';
