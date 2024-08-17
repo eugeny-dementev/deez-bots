@@ -110,3 +110,33 @@ export function isValidReelURL(url: string) {
     return false;
   }
 }
+
+/*
+URL {
+  href: 'https://vk.com/video-76116461_171554880',
+  origin: 'https://vk.com',
+  protocol: 'https:',
+  username: '',
+  password: '',
+  host: 'vk.com',
+  hostname: 'vk.com',
+  port: '',
+  pathname: '/video-76116461_171554880',
+  search: '',
+  searchParams: URLSearchParams {},
+  hash: ''
+}
+*/
+export function isValidVKURL(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+
+    if (/\/video[a-zA-Z0-9\-_]+/.test(parsed.pathname) && /vk\.com/.test(parsed.host)) {
+      return true;
+    }
+
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
