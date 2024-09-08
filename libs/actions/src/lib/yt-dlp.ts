@@ -83,10 +83,13 @@ export class YtDlpSizes extends Action<YtDlpUrlContext & Partial<NotificationsOu
 
       context.logger.info('Found YtDlpSizes', { sizes });
     } catch (stderr: unknown) {
-      const message = parseYtDlpError(stderr as string);
-      const error = new Error(message);
-      context.logger.error(error);
-      context.terr?.(error);
+      let error = stderr;
+      if (typeof stderr === 'string') {
+        const message = parseYtDlpError(stderr as string);
+        error = new Error(message);
+      }
+      context.logger.error(error as Error);
+      context.terr?.(error as Error);
 
       context.abort();
     }
