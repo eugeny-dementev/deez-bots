@@ -103,7 +103,7 @@ export function parseFormatsListing(str: string): FormatListing[] {
       // @ts-ignore
       res: Math.min(.../[0-9]+x[0-9]+/.exec(l)[0].split('x').map(v => parseInt(v))),
       // @ts-ignore
-      size: parseFloat(/([0-9]+\.?[0-9]{2}?)MiB/.exec(l)[1]),
+      size: parseFloat(/([0-9]+\.?[0-9]{2}?)[MG]iB/.exec(l)[1]),
     }))
     .reverse();
 }
