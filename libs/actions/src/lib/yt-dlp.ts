@@ -95,7 +95,7 @@ export class YtDlpSizes extends Action<YtDlpUrlContext & Partial<NotificationsOu
 
 export function parseFormatsListing(str: string): FormatListing[] {
   return str.split('\n')
-    .filter(l => l.includes('MiB') && /[0-9]+x[0-9]+/.test(l))
+    .filter(l => (l.includes('MiB') || l.includes('GiB')) && /[0-9]+x[0-9]+/.test(l))
     .map((l: string) => ({
       // @ts-ignore
       res: Math.min(.../[0-9]+x[0-9]+/.exec(l)[0].split('x').map(v => parseInt(v))),
