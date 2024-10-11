@@ -15,11 +15,17 @@ export default function multiTrackRecognizer(patterns: string[]): MultiTrack {
 }
 
 export function getVideo(patterns: string[]): string {
-  const mkv = patterns.find((item) => {
-    return /\.mkv$/.test(item);
-  })
+  const mkvs = patterns
+    .filter((item) => {
+      return /\.mkv$/.test(item);
+    })
+    .sort((a, b) => a.length - b.length)
 
-  return mkv || '';
+  if (mkvs.length === 0) {
+    return '';
+  }
+
+  return mkvs[0];
 }
 
 export function getAudio(patterns: string[]) {
