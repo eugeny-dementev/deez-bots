@@ -28,6 +28,15 @@ export function getDestination(files: TFile[]): DestContext {
     }
   };
 
+  // Arcane.S02E01.Heavy.Is.the.Crown.mkv
+  const fileName = files[0].name;
+  if (/S\d{1,2}E\d{1,2}/.test(fileName)) {
+    return {
+      qdir: qTvshowsDir,
+      fdir: tvshowsDir,
+    }
+  }
+
   return {
     qdir: qMoviesDir,
     fdir: moviesDir,
