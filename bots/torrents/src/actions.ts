@@ -437,7 +437,7 @@ export class SearchTopic extends Action<TopicConfigContext & CompContext> {
         return;
       }
 
-      context.extend({ topic: { link: topic.Link, publishDate: topic.PublishDate } });
+      context.extend({ topic: { guid: topic.Guid, link: topic.Link, publishDate: topic.PublishDate } });
     } catch (error) {
       context.logger.error(error as Error);
       context.abort();
