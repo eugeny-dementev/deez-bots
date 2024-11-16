@@ -35,6 +35,7 @@ import multiTrackRecognizer from './multi-track.js';
 import { getDestination } from './torrent.js';
 import { BotContext, DestContext, MultiTrack, MultiTrackContext, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
 import { TrackingTopic } from './watcher.js';
+import { DB } from './db.js';
 
 type CompContext = BotContext & LoggerOutput & NotificationsOutput;
 
@@ -442,6 +443,34 @@ export class SearchTopic extends Action<TopicConfigContext & CompContext> {
       context.logger.error(error as Error);
       context.abort();
     }
+  }
+}
+
+export type TopicContext = { topic: { guid: string, link: string, publishDate: string } };
+export class CheckTopicInDB extends Action<TopicContext & CompContext> {
+  async execute(context: TopicContext & CompContext & QueueContext): Promise<void> {
+    const { topic } = context;
+
+    const db = new DB();
+
+    const dbTopic = await db.findTopic(topic.guid);
+
+    if (!dbTopic) {
+      await db.addTopic(topic.guid, topic.publishDate);
+      return;
+    }
+
+    context.logger.info('DB Topic found', dbTopic);
+
+    const newPublishDate = new Date(topic.publishDate);
+    const oldPublishDate = new Date(dbTopic.publishDate);
+
+    if (newPublishDate === oldPublishDate) {
+      context.abort();
+      return;
+    }
+
+    await db.updateTopic(topic.guid, topic.publishDate);
   }
 }
 
