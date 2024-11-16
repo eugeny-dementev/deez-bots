@@ -387,11 +387,11 @@ export class DeleteFile extends Action<CompContext> {
   }
 }
 
-export type TopicContext = {
+export type TopicConfigContext = {
   topicConfig: TrackingTopic,
 }
-export class SearchTopic extends Action<TopicContext & CompContext> {
-  async execute(context: TopicContext & CompContext & QueueContext): Promise<void> {
+export class SearchTopic extends Action<TopicConfigContext & CompContext> {
+  async execute(context: TopicConfigContext & CompContext & QueueContext): Promise<void> {
     const { topicConfig } = context;
 
     const url = `${jackettHost}/api/v2.0/indexers/all/results?apikey=${jackettKey}&Query=${encodeURIComponent(topicConfig.query)}`;
