@@ -388,6 +388,12 @@ export class DeleteFile extends Action<CompContext> {
   }
 }
 
+export type Topic = {
+  link: string,
+  title: string,
+  guid: string,
+  publishDate: string,
+}
 export type TopicConfigContext = {
   topicConfig: TrackingTopic,
 }
