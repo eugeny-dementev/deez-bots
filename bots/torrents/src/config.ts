@@ -32,3 +32,4 @@ export const subsPriorities = String(process.env.SUBTITLE_PRIORITIES).split(',')
 export const isWin = process.platform === "win32";
 
 export const jackettHost = `http://${process.env.JACKETT_HOST ?? 'localhost'}:9117`;
+export const jackettKey = String(process.env.JACKETT_KEY);
