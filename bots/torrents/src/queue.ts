@@ -2,13 +2,16 @@ import { InjectLogger, InjectNotifications, notifications } from '@libs/actions'
 import { QueueAction, util } from 'async-queue-runner';
 import {
   AddUploadToQBitTorrent,
+  CheckTopicInDB,
   CheckTorrentFile,
   ConvertMultiTrack,
   DeleteFile,
   DownloadFile,
+  DownloadTopicFile,
   ExtractTorrentPattern,
   MonitorDownloadingProgress,
-  RenameFile
+  RenameFile,
+  SearchTopic
 } from './actions.js';
 import { MultiTrackContext } from './types.js';
 
@@ -39,20 +42,14 @@ export const handleQBTFile: () => QueueAction[] = () => [
   DeleteFile,
 ];
 
-export const HandleTopic: () => QueueAction[] = () => [
+export const handleTopic: () => QueueAction[] = () => [
   InjectLogger,
   InjectNotifications,
   notifications.tadd('Analyzing topic'),
-  // SearchTopicInJackett,
-  // CheckTopicInDB,
-  // util.if<TopicContext>(({ publishDate, lastPublishDate }) => publishDate === lastPublishDate, {
-  //   then: [
-  //     notifications.tadd('Nothing updated in the topic'),
-  //     util.abort(),
-  //   ],
-  // }),
-  // DownloadJackettFile,
-  // notifications.tadd('New topic torrent file downloaded'),
+  SearchTopic,
+  CheckTopicInDB,
+  DownloadTopicFile,
+  notifications.tadd('New topic torrent file downloaded'),
   ExtractTorrentPattern,
   CheckTorrentFile,
   util.if<MultiTrackContext>(({ type }) => type === 'multi-track', {
