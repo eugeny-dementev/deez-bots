@@ -1,20 +1,40 @@
 import { LoggerOutput, NotificationsOutput } from '@libs/actions';
 import { exec, prepare } from '@libs/command';
 import { Action, lockingClassFactory, QueueContext } from 'async-queue-runner';
+import expandTilde from 'expand-tilde';
 import * as fs from 'fs';
 import { glob } from 'glob';
+import { FileX } from 'node_modules/@grammyjs/files/out/files.js';
 import * as path from "path";
 import { chromium } from 'playwright';
 import { promisify } from 'util';
-import expandTilde from 'expand-tilde';
-import { FileX } from 'node_modules/@grammyjs/files/out/files.js';
 // @ts-ignore
 import parseTorrent from "parse-torrent";
-import { downloadsDir, moviesDir, qBitTorrentHost, qRawShowsDir, rawShowsDir, tvshowsDir } from './config.js';
-import { closeBrowser, fileExists, getDirMaps, omit, openBrowser, russianLetters, russianToEnglish, sleep, wildifySquareBrackets } from './helpers.js';
+import {
+  downloadsDir,
+  jackettHost,
+  jackettKey,
+  moviesDir,
+  qBitTorrentHost,
+  qRawShowsDir,
+  rawShowsDir,
+  tvshowsDir
+} from './config.js';
+import {
+  closeBrowser,
+  fileExists,
+  getDirMaps,
+  omit,
+  openBrowser,
+  russianLetters,
+  russianToEnglish,
+  sleep,
+  wildifySquareBrackets
+} from './helpers.js';
 import multiTrackRecognizer from './multi-track.js';
 import { getDestination } from './torrent.js';
 import { BotContext, DestContext, MultiTrack, MultiTrackContext, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
+import { TrackingTopic } from './watcher.js';
 
 type CompContext = BotContext & LoggerOutput & NotificationsOutput;
 
@@ -364,6 +384,64 @@ export class MonitorDownloadingProgress extends Action<CompContext & { torrentNa
 export class DeleteFile extends Action<CompContext> {
   async execute(context: CompContext): Promise<void> {
     await unlink(context.filePath);
+  }
+}
+
+export type TopicContext = {
+  topicConfig: TrackingTopic,
+}
+export class SearchTopic extends Action<TopicContext & CompContext> {
+  async execute(context: TopicContext & CompContext & QueueContext): Promise<void> {
+    const { topicConfig } = context;
+
+    const url = `${jackettHost}/api/v2.0/indexers/all/results?apikey=${jackettKey}&Query=${encodeURIComponent(topicConfig.query)}`;
+
+    try {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        context.logger.warn(`Bad response while searching for topics: ${response.statusText}`, {
+          status: response.status,
+          ok: response.ok,
+          url,
+          topicConfig,
+        });
+        context.abort();
+        return;
+      }
+
+      const data = await response.json();
+
+      if (!data.Results || !data.Results.length) {
+        context.logger.warn(`No topics found whiel searching: ${topicConfig.query}`, {
+          url,
+          topicConfig,
+        });
+        context.abort();
+        return;
+      }
+
+      // Map to a simple format or use the data as you wish
+      const torrents = data.Results.map((torrent: any) => ({
+        ...torrent,
+      })) as { Guid: string, Link: string }[];
+
+      const topic = torrents.find((torrent) => topicConfig.guid === torrent.Guid);
+
+      if (!topic) {
+        context.logger.info('No topics found for provided guid/query pair', {
+          topicConfig,
+          url,
+        });
+        context.abort();
+        return;
+      }
+
+      context.extend({ topicLink: topic.Link });
+    } catch (error) {
+      context.logger.error(error as Error);
+      context.abort();
+    }
   }
 }
 
