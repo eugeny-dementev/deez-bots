@@ -431,11 +431,11 @@ export class SearchTopic extends Action<TopicConfigContext & CompContext> {
       // Map to a simple format or use the data as you wish
       const torrents = data.Results.map((torrent: any) => ({
         ...torrent,
-      })) as { Guid: string, Link: string, PublishDate: string }[];
+      })) as { Guid: string, Link: string, PublishDate: string, Title: string }[];
 
-      const topic = torrents.find((torrent) => topicConfig.guid === torrent.Guid);
+      const responseTopic = torrents.find((torrent) => topicConfig.guid === torrent.Guid);
 
-      if (!topic) {
+      if (!responseTopic) {
         context.logger.info('No topics found for provided guid/query pair', {
           topicConfig,
           url,
@@ -444,7 +444,14 @@ export class SearchTopic extends Action<TopicConfigContext & CompContext> {
         return;
       }
 
-      context.extend({ topic: { guid: topic.Guid, link: topic.Link, publishDate: topic.PublishDate } });
+      const topic: Topic = {
+        guid: responseTopic.Guid,
+        link: responseTopic.Link,
+        publishDate: responseTopic.PublishDate,
+        title: responseTopic.Title,
+      };
+
+      context.extend({ topic });
     } catch (error) {
       context.logger.error(error as Error);
       context.abort();
@@ -452,7 +459,7 @@ export class SearchTopic extends Action<TopicConfigContext & CompContext> {
   }
 }
 
-export type TopicContext = { topic: { guid: string, link: string, publishDate: string } };
+export type TopicContext = { topic: Topic };
 export class CheckTopicInDB extends Action<TopicContext & CompContext> {
   async execute(context: TopicContext & CompContext & QueueContext): Promise<void> {
     const { topic } = context;
