@@ -463,8 +463,8 @@ export class CheckTopicInDB extends Action<TopicContext & CompContext> {
 
     context.logger.info('DB Topic found', dbTopic);
 
-    const newPublishDate = new Date(topic.publishDate);
-    const oldPublishDate = new Date(dbTopic.publishDate);
+    const newPublishDate = new Date(topic.publishDate).getTime();
+    const oldPublishDate = new Date(dbTopic.publishDate).getTime();
 
     if (newPublishDate === oldPublishDate) {
       context.logger.info('No updates in the topic', {
