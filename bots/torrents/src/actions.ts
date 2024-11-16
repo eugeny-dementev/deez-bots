@@ -457,6 +457,7 @@ export class CheckTopicInDB extends Action<TopicContext & CompContext> {
 
     if (!dbTopic) {
       await db.addTopic(topic.guid, topic.publishDate);
+      context.logger.info('New topic added to db', topic);
       return;
     }
 
@@ -466,11 +467,20 @@ export class CheckTopicInDB extends Action<TopicContext & CompContext> {
     const oldPublishDate = new Date(dbTopic.publishDate);
 
     if (newPublishDate === oldPublishDate) {
+      context.logger.info('No updates in the topic', {
+        topic: topic,
+        dbTopic,
+      });
       context.abort();
       return;
     }
 
     await db.updateTopic(topic.guid, topic.publishDate);
+
+    context.logger.info('Topic is updates in DB', {
+      topic: topic,
+      dbTopic,
+    });
   }
 }
 
