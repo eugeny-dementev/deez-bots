@@ -4,6 +4,9 @@ import { Action, lockingClassFactory, QueueContext } from 'async-queue-runner';
 import expandTilde from 'expand-tilde';
 import * as fs from 'fs';
 import { glob } from 'glob';
+import { Readable } from 'node:stream';
+import { finished } from 'node:stream/promises';
+import { ReadableStream } from 'node:stream/web';
 import { FileX } from 'node_modules/@grammyjs/files/out/files.js';
 import * as path from "path";
 import { chromium } from 'playwright';
@@ -20,6 +23,7 @@ import {
   rawShowsDir,
   tvshowsDir
 } from './config.js';
+import { DB } from './db.js';
 import {
   closeBrowser,
   fileExists,
@@ -35,7 +39,6 @@ import multiTrackRecognizer from './multi-track.js';
 import { getDestination } from './torrent.js';
 import { BotContext, DestContext, MultiTrack, MultiTrackContext, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
 import { TrackingTopic } from './watcher.js';
-import { DB } from './db.js';
 
 type CompContext = BotContext & LoggerOutput & NotificationsOutput;
 
@@ -494,6 +497,47 @@ export class CheckTopicInDB extends Action<TopicContext & CompContext> {
       topic: topic,
       dbTopic,
     });
+  }
+}
+
+export class DownloadTopicFile extends Action<TopicContext & CompContext> {
+  async execute(context: TopicContext & CompContext & QueueContext): Promise<void> {
+    const { topic } = context;
+
+    const fileName = topic.title
+      .toLowerCase()
+      .split('')
+      .map((char: string) => {
+        if (russianLetters.has(char)) {
+          return russianToEnglish[char as keyof typeof russianToEnglish] || char;
+        } else return char;
+      })
+      .join('')
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9_]/g, '');
+    const absolutePathDownloadsDir = expandTilde(downloadsDir);
+    const destination = path.join(absolutePathDownloadsDir, `${fileName}.torrent`);
+
+    try {
+      const response = await fetch(topic.link);
+      if (!response.ok || !response.body) {
+        context.logger.warn('Failed to download file')
+        context.abort();
+        return;
+      }
+
+      const fileStream = fs.createWriteStream(destination);
+      await finished(Readable.fromWeb(response.body as ReadableStream).pipe(fileStream));
+
+      context.logger.info('Topic file downloaded', {
+        ...topic,
+        fileName,
+        destination
+      });
+    } catch (error) {
+      context.logger.error(error as Error);
+      context.abort();
+    }
   }
 }
 
