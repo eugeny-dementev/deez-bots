@@ -2,15 +2,14 @@ import { QueueRunner } from 'async-queue-runner';
 import { Bot, Context } from 'grammy';
 import { FileFlavor, hydrateFiles } from '@grammyjs/files';
 import { adminId, qMoviesDir, publishersIds, token } from './config.js';
-import { handleQBTFile } from './queue.js';
+import { handleQBTFile, handleTopic } from './queue.js';
 import { loggerFactory } from '@libs/actions';
-import { ConfigWatcher } from './watcher.js';
+import { ConfigWatcher, TrackingTopic } from './watcher.js';
 
 const logger = loggerFactory();
 const queue = new QueueRunner({
   logger,
 });
-const watcher = new ConfigWatcher();
 
 logger.setContext('TorrentsBot');
 queue.addEndListener(() => logger.setContext('TorrentsBot'));
@@ -76,7 +75,7 @@ bot.use((ctx) => {
     if (adminChatId !== chatId) {
       bot.api
         .forwardMessage(adminChatId, chatId, message.message_id)
-        .then(function() { logger.info("message forwarded") });
+        .then(function () { logger.info("message forwarded") });
     }
   } catch (e) {
     logger.error(e as Error);
@@ -85,6 +84,14 @@ bot.use((ctx) => {
 
 bot.start({ onStart: (me) => logger.info('Bot launched', me) });
 bot.catch((err) => logger.error(err))
+
+const watcher = new ConfigWatcher();
+
+watcher.on('topic', (topicConfig: TrackingTopic) => {
+  console.log('NEW topic:', topicConfig);
+
+  queue.add(handleTopic(), { bot, logger, adminId: adminChatId, chatId: adminChatId, topicConfig });
+});
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop());
