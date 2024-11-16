@@ -391,6 +391,12 @@ export class DeleteFile extends Action<CompContext> {
   }
 }
 
+export type JacketResponseItem = {
+  Guid: string,
+  Link: string,
+  PublishDate: string,
+  Title: string
+}
 export type Topic = {
   link: string,
   title: string,
@@ -434,7 +440,7 @@ export class SearchTopic extends Action<TopicConfigContext & CompContext> {
       // Map to a simple format or use the data as you wish
       const torrents = data.Results.map((torrent: any) => ({
         ...torrent,
-      })) as { Guid: string, Link: string, PublishDate: string, Title: string }[];
+      })) as JacketResponseItem[];
 
       const responseTopic = torrents.find((torrent) => topicConfig.guid === torrent.Guid);
 
