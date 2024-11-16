@@ -54,6 +54,8 @@
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "shelljs": "^0.8.5",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
     "tslib": "^2.3.0",
     "yamlify-object": "^2.0.0",
     "yamlify-object-colors": "^1.0.3"
