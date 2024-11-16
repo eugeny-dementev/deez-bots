@@ -4,11 +4,13 @@ import { FileFlavor, hydrateFiles } from '@grammyjs/files';
 import { adminId, qMoviesDir, publishersIds, token } from './config.js';
 import { handleQBTFile } from './queue.js';
 import { loggerFactory } from '@libs/actions';
+import { ConfigWatcher } from './watcher.js';
 
 const logger = loggerFactory();
 const queue = new QueueRunner({
   logger,
 });
+const watcher = new ConfigWatcher();
 
 logger.setContext('TorrentsBot');
 queue.addEndListener(() => logger.setContext('TorrentsBot'));
