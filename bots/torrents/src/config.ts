@@ -30,3 +30,5 @@ export const audioPriorities = String(process.env.AUDIO_PRIORITIES).split(',');
 export const subsPriorities = String(process.env.SUBTITLE_PRIORITIES).split(',');
 
 export const isWin = process.platform === "win32";
+
+export const jackettHost = `http://${process.env.JACKETT_HOST ?? 'localhost'}:9117`;
