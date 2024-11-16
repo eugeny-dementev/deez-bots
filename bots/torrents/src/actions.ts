@@ -424,7 +424,7 @@ export class SearchTopic extends Action<TopicContext & CompContext> {
       // Map to a simple format or use the data as you wish
       const torrents = data.Results.map((torrent: any) => ({
         ...torrent,
-      })) as { Guid: string, Link: string }[];
+      })) as { Guid: string, Link: string, PublishDate: string }[];
 
       const topic = torrents.find((torrent) => topicConfig.guid === torrent.Guid);
 
@@ -437,7 +437,7 @@ export class SearchTopic extends Action<TopicContext & CompContext> {
         return;
       }
 
-      context.extend({ topicLink: topic.Link });
+      context.extend({ topic: { link: topic.Link, publishDate: topic.PublishDate } });
     } catch (error) {
       context.logger.error(error as Error);
       context.abort();
