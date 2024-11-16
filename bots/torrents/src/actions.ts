@@ -534,6 +534,10 @@ export class DownloadTopicFile extends Action<TopicContext & CompContext> {
         fileName,
         destination
       });
+
+      context.extend({
+        filePath: destination,
+      });
     } catch (error) {
       context.logger.error(error as Error);
       context.abort();
