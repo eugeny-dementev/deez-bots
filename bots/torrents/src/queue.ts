@@ -38,3 +38,38 @@ export const handleQBTFile: () => QueueAction[] = () => [
   }),
   DeleteFile,
 ];
+
+export const HandleTopic: () => QueueAction[] = () => [
+  InjectLogger,
+  InjectNotifications,
+  notifications.tadd('Analyzing topic'),
+  // SearchTopicInJackett,
+  // CheckTopicInDB,
+  // util.if<TopicContext>(({ publishDate, lastPublishDate }) => publishDate === lastPublishDate, {
+  //   then: [
+  //     notifications.tadd('Nothing updated in the topic'),
+  //     util.abort(),
+  //   ],
+  // }),
+  // DownloadJackettFile,
+  // notifications.tadd('New topic torrent file downloaded'),
+  ExtractTorrentPattern,
+  CheckTorrentFile,
+  util.if<MultiTrackContext>(({ type }) => type === 'multi-track', {
+    then: [
+      notifications.tlog('Torrent parsed, Multi Track detected'),
+    ],
+  }),
+  notifications.tadd('Adding torrent to download'),
+  AddUploadToQBitTorrent,
+  notifications.tadd('Start monitoring download progress'),
+  util.delay(5000),
+  MonitorDownloadingProgress,
+  util.if<MultiTrackContext>(({ type }) => type === 'multi-track', {
+    then: [
+      notifications.tadd('Start multiplexing'),
+      ConvertMultiTrack,
+    ],
+  }),
+  DeleteFile,
+];
