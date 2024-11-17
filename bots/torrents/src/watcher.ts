@@ -60,7 +60,7 @@ export class ConfigWatcher extends EventEmitter {
     });
   }
 
-  getHash(str: string): string {
+  private getHash(str: string): string {
     const hash = crypto.createHash('sha256');
 
     hash.update(str);
