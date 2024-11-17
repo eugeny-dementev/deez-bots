@@ -359,7 +359,7 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
 
 export class MonitorDownloadingProgress extends Action<CompContext & { torrentName: string }> {
   async execute(context: { torrentName: string; } & CompContext & QueueContext): Promise<void> {
-    const { torrentName, tlog, terr, chatId } = context;
+    const { torrentName, tlog, terr } = context;
 
     try {
       let progressCache = '';
