@@ -1,7 +1,7 @@
 import expandTilde from 'expand-tilde';
 import crypto from 'node:crypto';
 import EventEmitter from 'node:events';
-import { watch, WatchEventType, readFile } from 'node:fs';
+import { watch, WatchEventType, readFile, promises } from 'node:fs';
 import path from 'node:path';
 
 const trackingFile = 'tracking.json'
@@ -58,6 +58,14 @@ export class ConfigWatcher extends EventEmitter {
         })
       }
     });
+  }
+
+  async getTopicsConfigs(type: 'tv_show' | 'game'): Promise<TrackingTopic[]> {
+    const buf = await promises.readFile(fullTrackingPath);
+
+    const content = JSON.parse(buf.toString()) as TrackingConfig;
+
+    return content.topics.filter((topicConfig) => topicConfig.type === type);
   }
 
   private getHash(str: string): string {
