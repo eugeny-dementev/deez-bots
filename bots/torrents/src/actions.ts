@@ -246,7 +246,7 @@ export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentConte
 
 export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
   async execute(context: BotContext & QBitTorrentContext & LoggerOutput & NotificationsOutput & MultiTrackContext & QueueContext): Promise<void> {
-    const { fdir, tracks, torrentDirName, tlog, terr } = context;
+    const { fdir, tracks, torrentDirName, tlog, tadd, terr } = context;
     context.logger.info(`ConvertMultiTrack dir: ${fdir}`);
     let [
       videosFullPattern,
@@ -291,6 +291,14 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
       });
     }
 
+    let hasAudio = false;
+    for (const map of filesMap.values()) {
+      if (map.audio) {
+        hasAudio = true;
+        break;
+      }
+    }
+
     let torrentDestFolder = torrentDirName;
     const dirMaps = await getDirMaps();
     for (const dirMap of dirMaps) {
@@ -316,6 +324,13 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
         oldFiles++
 
         await tlog(`Converting ${i} file out of ${size}`);
+        continue;
+      }
+
+      if (hasAudio && !files.audio) {
+        context.logger.info(`Skipping ${fileName}(${i} file out of ${size}) due to yet missing audio file`);
+        await tlog(`Skipping ${fileName}(${i} file out of ${size}) due to yet missing audio file`);
+        await tadd('');
         continue;
       }
 
