@@ -512,7 +512,7 @@ export class CheckTopicInDB extends Action<TopicContext & CompContext> {
       return;
     }
 
-    await db.updateTopic(topic.guid, topic.publishDate);
+    await db.updatePubDateTopic(topic.guid, topic.publishDate);
 
     context.logger.info('Topic is updates in DB', {
       topic: topic,
