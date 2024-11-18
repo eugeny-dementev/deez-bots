@@ -8,8 +8,9 @@ const trackingFile = 'tracking.json'
 const trackingPath = path.join('~/.config/torrents', trackingFile);
 const fullTrackingPath = expandTilde(trackingPath);
 
+export type Type = 'tv_show' | 'game';
 export type TrackingTopic = {
-  type: 'tv_show',
+  type: Type,
   subsOnly: boolean,
   query: string,
   guid: string,
@@ -60,7 +61,7 @@ export class ConfigWatcher extends EventEmitter {
     });
   }
 
-  async getTopicsConfigs(type: 'tv_show' | 'game'): Promise<TrackingTopic[]> {
+  async getTopicsConfigs(type: Type): Promise<TrackingTopic[]> {
     const buf = await promises.readFile(fullTrackingPath);
 
     const content = JSON.parse(buf.toString()) as TrackingConfig;
