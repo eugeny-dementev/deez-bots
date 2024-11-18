@@ -49,35 +49,29 @@ export class Scheduler extends EventEmitter {
   }
 
   // return hours left until the target hour when timeout should trigger
-  private calculateTimeout(lastCheckDate: Topic['lastCheckDate']): number {
+  private calculateTimeout(lastCheckDateStr: Topic['lastCheckDate']): number {
     const targetHour = typeToHour[this.type];
-    const currentDate = new Date();
 
-    const currentUTCDate = new Date(currentDate);
-    const targetUTCDate = new Date(currentUTCDate);
-    targetUTCDate.setUTCHours(targetHour, 0, 0, 0); // Set to the target hour
+    const lastCheckedData = new Date(lastCheckDateStr);
+    lastCheckedData.setUTCHours(lastCheckedData.getUTCHours(), 0, 0, 0);
+
+    const currentUTCDate = new Date();
+    currentUTCDate.setUTCHours(currentUTCDate.getUTCHours(), 0, 0, 0);
+
+    const targetUTCDate = new Date();
+    targetUTCDate.setUTCHours(targetHour, 0, 0, 0);
 
     // Adjust for the same-hour rule
-    if (lastCheckDate) {
-      const lastChecked = new Date(lastCheckDate);
-      if (
-        lastChecked.getUTCHours() === currentUTCDate.getUTCHours() &&
-        lastChecked.getUTCDay() === currentUTCDate.getUTCDay() &&
-        lastChecked.getUTCMonth() === currentUTCDate.getUTCMonth() &&
-        lastChecked.getUTCFullYear() === currentUTCDate.getUTCFullYear()
-      ) {
-        targetUTCDate.setUTCDate(targetUTCDate.getUTCDate() + 1); // Move to next day
-      }
+    if (lastCheckedData.getUTCHours() === currentUTCDate.getUTCHours()) {
+      targetUTCDate.setUTCDate(targetUTCDate.getUTCDate() + 1); // Move to next day
     }
 
     // If target time is already passed today, move it to tomorrow
-    if (targetUTCDate <= currentUTCDate) {
+    if (targetUTCDate.getUTCHours() <= currentUTCDate.getUTCHours()) {
       targetUTCDate.setUTCDate(targetUTCDate.getUTCDate() + 1);
     }
 
-    const hoursDifference = Math.round((targetUTCDate.getTime() - currentUTCDate.getTime()) / (1000 * 60 * 60));
-    return hoursDifference;
-
+    return targetUTCDate.getTime() - currentUTCDate.getTime();
   }
 
   private getCurrentHour(): number {
