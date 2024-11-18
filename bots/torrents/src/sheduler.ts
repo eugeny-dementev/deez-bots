@@ -26,6 +26,8 @@ export class Scheduler extends EventEmitter {
     private readonly type: Type,
   ) {
     super();
+
+    this.hookForRescheduling = this.hookForRescheduling.bind(this);
   }
 
   async start() {
@@ -81,6 +83,8 @@ export class Scheduler extends EventEmitter {
   private scheduleEvent(topicConfig: TrackingTopic, timeout: number) {
     const timeoutRef = setTimeout(() => {
       this.#timeoutsMap.delete(topicConfig.guid);
+
+      this.emit('topic', { topicConfig, sheduleNextCheck: this.hookForRescheduling });
     }, timeout);
 
     this.#timeoutsMap.set(topicConfig.guid, timeoutRef);
@@ -89,7 +93,7 @@ export class Scheduler extends EventEmitter {
   // hook to call from queue after topic finish processing
   async hookForRescheduling(topicConfig: TrackingTopic) {
     const db = new DB();
-    const topic = await db.findTopic(topicConfig.guid);
+    const topic = await db.findTopic(topicConfig.guid); // topic.lastCheckDate should be updated at that point
 
     if (!topic) {
       throw new Error('Topic is missing in DB when it must be there: ' + topicConfig.guid);
