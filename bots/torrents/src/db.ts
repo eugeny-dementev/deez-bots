@@ -10,17 +10,20 @@ const dbFullPath = expandTilde(dbPath);
 export type Topic = {
   title: string,
   publishDate: string,
+  lastCheckDate: string,
   guid: string,
 }
 
 const tableName = 'topic';
 const createTopicTable = `CREATE TABLE IF NOT EXISTS ${tableName} (
-  guid TEXT UNIQUE,
-  publishDate TEXT
+  guid TEXT UNIQUE NOT NULL,
+  publishDate TEXT NOT NULL,
+  lastCheckDate TEXT
 )`;
-const singleTopic = `SELECT guid, publishDate FROM ${tableName} WHERE guid = ?`;
+const singleTopic = `SELECT guid, publishDate, lastCheckDate FROM ${tableName} WHERE guid = ?`;
 const addTopic = `INSERT INTO ${tableName} (guid, publishDate) VALUES (?, ?)`;
-const updateTopic = `UPDATE ${tableName} SET publishDate = ? WHERE guid = ?`;
+const updatePubDateTopic = `UPDATE ${tableName} SET publishDate = ? WHERE guid = ?`;
+const updateLastCheckDateTopic = `UPDATE ${tableName} SET lastCheckDate = ? WHERE guid = ?`;
 
 export class DB {
   private readonly db: Promise<Database>;
@@ -38,24 +41,31 @@ export class DB {
     db.exec(createTopicTable);
   }
 
-  async findTopic(guid: string): Promise<Topic | undefined> {
+  async findTopic(guid: Topic['guid']): Promise<Topic | undefined> {
     await this.init();
     const db = await this.db;
 
     return db.get(singleTopic, guid);
   }
 
-  async addTopic(guid: string, publishDate: string): Promise<void> {
+  async addTopic(guid: Topic['guid'], publishDate: Topic['publishDate']): Promise<void> {
     await this.init();
     const db = await this.db;
 
     await db.run(addTopic, guid, publishDate);
   }
 
-  async updateTopic(guid: string, publishDate: string): Promise<void> {
+  async updatePubDateTopic(guid: Topic['guid'], publishDate: Topic['publishDate']): Promise<void> {
     await this.init();
     const db = await this.db;
 
-    await db.run(updateTopic, publishDate, guid);
+    await db.run(updatePubDateTopic, publishDate, guid);
+  }
+
+  async updateLastCheckDateTopic(guid: Topic['guid'], lastCheckDate: Topic['lastCheckDate']) {
+    await this.init();
+    const db = await this.db;
+
+    await db.run(updateLastCheckDateTopic, lastCheckDate, guid);
   }
 }
