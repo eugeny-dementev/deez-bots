@@ -5,6 +5,8 @@ import { adminId, qMoviesDir, publishersIds, token } from './config.js';
 import { handleQBTFile, handleTopic } from './queue.js';
 import { loggerFactory } from '@libs/actions';
 import { ConfigWatcher, TrackingTopic } from './watcher.js';
+import { Scheduler } from './sheduler.js';
+import { warn } from 'console';
 
 const logger = loggerFactory();
 const queue = new QueueRunner({
@@ -86,11 +88,14 @@ bot.start({ onStart: (me) => logger.info('Bot launched', me) });
 bot.catch((err) => logger.error(err))
 
 const watcher = new ConfigWatcher();
+const scheduler = new Scheduler(logger, watcher);
+
+scheduler.on('topic', (topicConfig: TrackingTopic) => {
+  queue.add(handleTopic(), { bot, logger, adminId: adminChatId, chatId: adminChatId, topicConfig, scheduleNextCheck: scheduler.hookForRescheduling });
+});
 
 watcher.on('topic', (topicConfig: TrackingTopic) => {
-  console.log('NEW topic:', topicConfig);
-
-  queue.add(handleTopic(), { bot, logger, adminId: adminChatId, chatId: adminChatId, topicConfig });
+  queue.add(handleTopic(), { bot, logger, adminId: adminChatId, chatId: adminChatId, topicConfig, scheduleNextCheck: scheduler.hookForRescheduling });
 });
 
 // Enable graceful stop
