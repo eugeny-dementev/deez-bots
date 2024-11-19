@@ -25,7 +25,6 @@ export class Scheduler extends EventEmitter {
   constructor(
     private readonly logger: ILogger,
     private readonly config: ConfigWatcher,
-    private readonly type: Type,
   ) {
     super();
 
@@ -43,7 +42,7 @@ export class Scheduler extends EventEmitter {
         return; // ConfigWatcher handles such cases
       }
 
-      if (!topic.lastCheckDate && this.getCurrentHour() === typeToHour[this.type]) {
+      if (!topic.lastCheckDate && this.getCurrentHour() === typeToHour[topicConfig.type]) {
         this.emit('topic', topicConfig);
         return;
       }
