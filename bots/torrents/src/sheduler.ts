@@ -93,6 +93,10 @@ export class Scheduler extends EventEmitter {
   }
 
   private scheduleEvent(topicConfig: TrackingTopic, timeout: number) {
+    if (this.#timeoutsMap.has(topicConfig.guid)) {
+      return;
+    }
+
     this.logger.info('Timeout set for ' + topicConfig.query, {
       timeout,
       targetDate: new Date(timeout + Date.now()).toString(),
