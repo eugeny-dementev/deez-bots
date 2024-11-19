@@ -1,11 +1,13 @@
+import { ILogger } from '@libs/actions';
 import EventEmitter from 'node:events';
 import { DB, Topic } from "./db";
-import { Logger } from "./logger";
 import { ConfigWatcher, TrackingTopic, Type } from "./watcher";
 
 /*
  * @WARNING: All time calculations and scheduling are done in UTC-0 timezone
  */
+
+// const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 export enum Hour {
   TVShow = 10, // 18:00 in UTC+8
@@ -21,7 +23,7 @@ export class Scheduler extends EventEmitter {
   #timeoutsMap: Map<Topic['guid'], NodeJS.Timeout> = new Map();
 
   constructor(
-    private readonly logger: Logger,
+    private readonly logger: ILogger,
     private readonly config: ConfigWatcher,
     private readonly type: Type,
   ) {
@@ -31,7 +33,7 @@ export class Scheduler extends EventEmitter {
   }
 
   async start() {
-    const topicsConfigs = await this.config.getTopicsConfigs(this.type);
+    const topicsConfigs = await this.config.getTopicsConfigs();
     const db = new DB();
 
     for (const topicConfig of topicsConfigs) {
@@ -46,16 +48,22 @@ export class Scheduler extends EventEmitter {
         return;
       }
 
-      this.scheduleEvent(topicConfig, this.calculateTimeout(topic.lastCheckDate));
+      const timeout = this.calculateTimeout(topicConfig.type, topic.lastCheckDate);
+      this.logger.info('Timeout set for ' + topicConfig.query, {
+        timeout,
+        targetDate: new Date(timeout + Date.now()).toString(),
+        ...topicConfig,
+      })
+      this.scheduleEvent(topicConfig, timeout);
     }
   }
 
   // return hours left until the target hour when timeout should trigger
-  private calculateTimeout(lastCheckDateStr: Topic['lastCheckDate']): number {
-    const targetHour = typeToHour[this.type];
+  private calculateTimeout(type: Type, lastCheckDateStr: Topic['lastCheckDate']): number {
+    const targetHour = typeToHour[type];
 
-    const lastCheckedData = new Date(lastCheckDateStr);
-    lastCheckedData.setUTCHours(lastCheckedData.getUTCHours(), 0, 0, 0);
+    const lastCheckedDate = new Date(lastCheckDateStr);
+    lastCheckedDate.setUTCHours(lastCheckedDate.getUTCHours(), 0, 0, 0);
 
     const currentUTCDate = new Date();
     currentUTCDate.setUTCHours(currentUTCDate.getUTCHours(), 0, 0, 0);
@@ -63,8 +71,13 @@ export class Scheduler extends EventEmitter {
     const targetUTCDate = new Date();
     targetUTCDate.setUTCHours(targetHour, 0, 0, 0);
 
+    // If more than a day passed since last check date
+    // if (currentUTCDate.getTime() - lastCheckedDate.getTime() > ONE_DAY_MS) {
+    //   return targetUTCDate.getTime() - currentUTCDate.getTime();
+    // }
+
     // Adjust for the same-hour rule
-    if (lastCheckedData.getUTCHours() === currentUTCDate.getUTCHours()) {
+    if (lastCheckedDate.getUTCHours() === currentUTCDate.getUTCHours()) {
       targetUTCDate.setUTCDate(targetUTCDate.getUTCDate() + 1); // Move to next day
     }
 
@@ -99,6 +112,6 @@ export class Scheduler extends EventEmitter {
       throw new Error('Topic is missing in DB when it must be there: ' + topicConfig.guid);
     }
 
-    this.scheduleEvent(topicConfig, this.calculateTimeout(topic.lastCheckDate));
+    this.scheduleEvent(topicConfig, this.calculateTimeout(topicConfig.type, topic.lastCheckDate));
   }
 }
