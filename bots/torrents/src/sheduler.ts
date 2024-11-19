@@ -8,6 +8,7 @@ import { ConfigWatcher, TrackingTopic, Type } from "./watcher";
  */
 
 // const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const THIRTY_MINUTES_MS = 30 * 60 * 1000;
 
 export enum Hour {
   TVShow = 10, // 18:00 in UTC+8
@@ -29,6 +30,8 @@ export class Scheduler extends EventEmitter {
     super();
 
     this.hookForRescheduling = this.hookForRescheduling.bind(this);
+
+    this.start().catch((error) => this.logger.error(error));
   }
 
   async start() {
@@ -47,12 +50,7 @@ export class Scheduler extends EventEmitter {
         return;
       }
 
-      const timeout = this.calculateTimeout(topicConfig.type, topic.lastCheckDate);
-      this.logger.info('Timeout set for ' + topicConfig.query, {
-        timeout,
-        targetDate: new Date(timeout + Date.now()).toString(),
-        ...topicConfig,
-      })
+      const timeout = this.calculateTimeout(topicConfig.type, topic.lastCheckDate) + Math.floor(Math.random() * THIRTY_MINUTES_MS);
       this.scheduleEvent(topicConfig, timeout);
     }
   }
@@ -85,7 +83,9 @@ export class Scheduler extends EventEmitter {
       targetUTCDate.setUTCDate(targetUTCDate.getUTCDate() + 1);
     }
 
-    return targetUTCDate.getTime() - currentUTCDate.getTime();
+    const currentMinutesMs = new Date().getUTCMinutes() * 60 * 1000;
+
+    return targetUTCDate.getTime() - currentUTCDate.getTime() - currentMinutesMs;
   }
 
   private getCurrentHour(): number {
@@ -93,10 +93,16 @@ export class Scheduler extends EventEmitter {
   }
 
   private scheduleEvent(topicConfig: TrackingTopic, timeout: number) {
+    this.logger.info('Timeout set for ' + topicConfig.query, {
+      timeout,
+      targetDate: new Date(timeout + Date.now()).toString(),
+      ...topicConfig,
+    });
+
     const timeoutRef = setTimeout(() => {
       this.#timeoutsMap.delete(topicConfig.guid);
 
-      this.emit('topic', { topicConfig, sheduleNextCheck: this.hookForRescheduling });
+      this.emit('topic', topicConfig);
     }, timeout);
 
     this.#timeoutsMap.set(topicConfig.guid, timeoutRef);
