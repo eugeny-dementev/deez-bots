@@ -11,7 +11,9 @@ import {
   ExtractTorrentPattern,
   MonitorDownloadingProgress,
   RenameFile,
-  SearchTopic
+  ScheduleNextCheck,
+  SearchTopic,
+  SetLastCheckedDate
 } from './actions.js';
 import { MultiTrackContext } from './types.js';
 
@@ -47,6 +49,8 @@ export const handleTopic: () => QueueAction[] = () => [
   InjectNotifications,
   notifications.tadd('Analyzing topic'),
   SearchTopic,
+  SetLastCheckedDate,
+  ScheduleNextCheck,
   CheckTopicInDB,
   DownloadTopicFile,
   notifications.tadd('New topic torrent file downloaded'),
