@@ -61,12 +61,12 @@ export class ConfigWatcher extends EventEmitter {
     });
   }
 
-  async getTopicsConfigs(type: Type): Promise<TrackingTopic[]> {
+  async getTopicsConfigs(): Promise<TrackingTopic[]> {
     const buf = await promises.readFile(fullTrackingPath);
 
     const content = JSON.parse(buf.toString()) as TrackingConfig;
 
-    return content.topics.filter((topicConfig) => topicConfig.type === type);
+    return content.topics;
   }
 
   private getHash(str: string): string {
