@@ -13,7 +13,8 @@ import {
   RenameFile,
   ScheduleNextCheck,
   SearchTopic,
-  SetLastCheckedDate
+  SetLastCheckedDate,
+  TopicConfigContext
 } from './actions.js';
 import { MultiTrackContext } from './types.js';
 
@@ -47,7 +48,7 @@ export const handleQBTFile: () => QueueAction[] = () => [
 export const handleTopic: () => QueueAction[] = () => [
   InjectLogger,
   InjectNotifications,
-  notifications.tadd('Analyzing topic'),
+  notifications.tadd<TopicConfigContext>(({ topicConfig }) => `Analyzing topic: ${topicConfig.query}`),
   SearchTopic,
   SetLastCheckedDate,
   ScheduleNextCheck,
