@@ -566,6 +566,24 @@ export class DownloadTopicFile extends Action<TopicContext & CompContext> {
   }
 }
 
+export class SetLastCheckedDate extends Action<TopicContext & CompContext> {
+  async execute(context: TopicContext & CompContext & QueueContext): Promise<void> {
+    const { topic } = context;
+    const db = new DB();
+
+    await db.updateLastCheckDateTopic(topic.guid, new Date().toISOString());
+  }
+}
+
+export type SchedulerContext = { scheduleNextCheck: (topicConfig: TrackingTopic) => void }
+export class ScheduleNextCheck extends Action<SchedulerContext & TopicConfigContext & CompContext> {
+  async execute(context: SchedulerContext & TopicConfigContext & CompContext & QueueContext): Promise<void> {
+    const { topicConfig, scheduleNextCheck } = context;
+
+    scheduleNextCheck(topicConfig);
+  }
+}
+
 export class Log extends Action<any> {
   async execute(context: any): Promise<void> {
     context.logger.info(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name', 'browser', 'page', 'tlog', 'terr', 'abort'));
