@@ -1,20 +1,44 @@
 import { LoggerOutput, NotificationsOutput } from '@libs/actions';
 import { exec, prepare } from '@libs/command';
 import { Action, lockingClassFactory, QueueContext } from 'async-queue-runner';
+import expandTilde from 'expand-tilde';
 import * as fs from 'fs';
 import { glob } from 'glob';
+import { Readable } from 'node:stream';
+import { finished } from 'node:stream/promises';
+import { ReadableStream } from 'node:stream/web';
+import { FileX } from 'node_modules/@grammyjs/files/out/files.js';
 import * as path from "path";
 import { chromium } from 'playwright';
 import { promisify } from 'util';
-import expandTilde from 'expand-tilde';
-import { FileX } from 'node_modules/@grammyjs/files/out/files.js';
 // @ts-ignore
 import parseTorrent from "parse-torrent";
-import { downloadsDir, moviesDir, qBitTorrentHost, qRawShowsDir, rawShowsDir, tvshowsDir } from './config.js';
-import { closeBrowser, fileExists, getDirMaps, omit, openBrowser, russianLetters, russianToEnglish, sleep, wildifySquareBrackets } from './helpers.js';
+import {
+  downloadsDir,
+  jackettHost,
+  jackettKey,
+  moviesDir,
+  qBitTorrentHost,
+  qRawShowsDir,
+  rawShowsDir,
+  tvshowsDir
+} from './config.js';
+import { DB } from './db.js';
+import {
+  closeBrowser,
+  fileExists,
+  getDirMaps,
+  omit,
+  openBrowser,
+  russianLetters,
+  russianToEnglish,
+  sleep,
+  wildifySquareBrackets
+} from './helpers.js';
 import multiTrackRecognizer from './multi-track.js';
 import { getDestination } from './torrent.js';
 import { BotContext, DestContext, MultiTrack, MultiTrackContext, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
+import { TrackingTopic } from './watcher.js';
 
 type CompContext = BotContext & LoggerOutput & NotificationsOutput;
 
@@ -222,7 +246,7 @@ export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentConte
 
 export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
   async execute(context: BotContext & QBitTorrentContext & LoggerOutput & NotificationsOutput & MultiTrackContext & QueueContext): Promise<void> {
-    const { fdir, tracks, torrentDirName, tlog, terr } = context;
+    const { fdir, tracks, torrentDirName, tlog, tadd, terr } = context;
     context.logger.info(`ConvertMultiTrack dir: ${fdir}`);
     let [
       videosFullPattern,
@@ -267,6 +291,14 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
       });
     }
 
+    let hasAudio = false;
+    for (const map of filesMap.values()) {
+      if (map.audio) {
+        hasAudio = true;
+        break;
+      }
+    }
+
     let torrentDestFolder = torrentDirName;
     const dirMaps = await getDirMaps();
     for (const dirMap of dirMaps) {
@@ -295,6 +327,13 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
         continue;
       }
 
+      if (hasAudio && !files.audio) {
+        context.logger.info(`Skipping ${fileName}(${i} file out of ${size}) due to yet missing audio file`);
+        await tlog(`Skipping ${fileName}(${i} file out of ${size}) due to yet missing audio file`);
+        await tadd('');
+        continue;
+      }
+
       const command = prepare('mkvmerge')
         .add(`--output "${outputFile}"`)
         .add('--no-audio', Boolean(files.audio))
@@ -320,7 +359,7 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
 
 export class MonitorDownloadingProgress extends Action<CompContext & { torrentName: string }> {
   async execute(context: { torrentName: string; } & CompContext & QueueContext): Promise<void> {
-    const { torrentName, tlog, terr, chatId } = context;
+    const { torrentName, tlog, terr } = context;
 
     try {
       let progressCache = '';
@@ -364,6 +403,184 @@ export class MonitorDownloadingProgress extends Action<CompContext & { torrentNa
 export class DeleteFile extends Action<CompContext> {
   async execute(context: CompContext): Promise<void> {
     await unlink(context.filePath);
+  }
+}
+
+export type JacketResponseItem = {
+  Guid: string,
+  Link: string,
+  PublishDate: string,
+  Title: string
+}
+export type Topic = {
+  link: string,
+  title: string,
+  guid: string,
+  publishDate: string,
+}
+export type TopicConfigContext = {
+  topicConfig: TrackingTopic,
+}
+export class SearchTopic extends Action<TopicConfigContext & CompContext> {
+  async execute(context: TopicConfigContext & CompContext & QueueContext): Promise<void> {
+    const { topicConfig } = context;
+
+    const url = `${jackettHost}/api/v2.0/indexers/all/results?apikey=${jackettKey}&Query=${encodeURIComponent(topicConfig.query)}`;
+
+    try {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        context.logger.warn(`Bad response while searching for topics: ${response.statusText}`, {
+          status: response.status,
+          ok: response.ok,
+          url,
+          topicConfig,
+        });
+        context.abort();
+        return;
+      }
+
+      const data = await response.json();
+
+      if (!data.Results || !data.Results.length) {
+        context.logger.warn(`No topics found whiel searching: ${topicConfig.query}`, {
+          url,
+          topicConfig,
+        });
+        context.abort();
+        return;
+      }
+
+      // Map to a simple format or use the data as you wish
+      const torrents = data.Results.map((torrent: any) => ({
+        ...torrent,
+      })) as JacketResponseItem[];
+
+      const responseTopic = torrents.find((torrent) => topicConfig.guid === torrent.Guid);
+
+      if (!responseTopic) {
+        context.logger.info('No topics found for provided guid/query pair', {
+          topicConfig,
+          url,
+        });
+        context.abort();
+        return;
+      }
+
+      const topic: Topic = {
+        guid: responseTopic.Guid,
+        link: responseTopic.Link,
+        publishDate: responseTopic.PublishDate,
+        title: responseTopic.Title,
+      };
+
+      context.extend({ topic });
+    } catch (error) {
+      context.logger.error(error as Error);
+      context.abort();
+    }
+  }
+}
+
+export type TopicContext = { topic: Topic };
+export class CheckTopicInDB extends Action<TopicContext & CompContext> {
+  async execute(context: TopicContext & CompContext & QueueContext): Promise<void> {
+    const { topic } = context;
+
+    const db = new DB();
+
+    const dbTopic = await db.findTopic(topic.guid);
+
+    if (!dbTopic) {
+      await db.addTopic(topic.guid, topic.publishDate);
+      context.logger.info('New topic added to db', topic);
+      return;
+    }
+
+    context.logger.info('DB Topic found', dbTopic);
+
+    const newPublishDate = new Date(topic.publishDate).getTime();
+    const oldPublishDate = new Date(dbTopic.publishDate).getTime();
+
+    if (newPublishDate === oldPublishDate) {
+      context.logger.info('No updates in the topic', {
+        topic: topic,
+        dbTopic,
+      });
+      context.abort();
+      return;
+    }
+
+    await db.updatePubDateTopic(topic.guid, topic.publishDate);
+
+    context.logger.info('Topic is updates in DB', {
+      topic: topic,
+      dbTopic,
+    });
+  }
+}
+
+export class DownloadTopicFile extends Action<TopicContext & CompContext> {
+  async execute(context: TopicContext & CompContext & QueueContext): Promise<void> {
+    const { topic } = context;
+
+    const fileName = topic.title
+      .toLowerCase()
+      .split('')
+      .map((char: string) => {
+        if (russianLetters.has(char)) {
+          return russianToEnglish[char as keyof typeof russianToEnglish] || char;
+        } else return char;
+      })
+      .join('')
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9_]/g, '');
+    const absolutePathDownloadsDir = expandTilde(downloadsDir);
+    const destination = path.join(absolutePathDownloadsDir, `${fileName}.torrent`);
+
+    try {
+      const response = await fetch(topic.link);
+      if (!response.ok || !response.body) {
+        context.logger.warn('Failed to download file')
+        context.abort();
+        return;
+      }
+
+      const fileStream = fs.createWriteStream(destination);
+      await finished(Readable.fromWeb(response.body as ReadableStream).pipe(fileStream));
+
+      context.logger.info('Topic file downloaded', {
+        ...topic,
+        fileName,
+        destination
+      });
+
+      context.extend({
+        filePath: destination,
+      });
+    } catch (error) {
+      context.logger.error(error as Error);
+      context.abort();
+    }
+  }
+}
+
+export class SetLastCheckedDate extends Action<TopicContext & CompContext> {
+  async execute(context: TopicContext & CompContext & QueueContext): Promise<void> {
+    const { topic } = context;
+    const db = new DB();
+
+    await db.updateLastCheckDateTopic(topic.guid, new Date().toISOString());
+  }
+}
+
+export type SchedulerContext = { scheduleNextCheck: (topicConfig: TrackingTopic) => void }
+export class ScheduleNextCheck extends Action<SchedulerContext & TopicConfigContext & CompContext> {
+  async execute(context: SchedulerContext & TopicConfigContext & CompContext & QueueContext): Promise<void> {
+    const { topicConfig, scheduleNextCheck } = context;
+
+    scheduleNextCheck(topicConfig);
   }
 }
 

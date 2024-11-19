@@ -57,7 +57,7 @@ export class Logger implements ILogger {
   }
 }
 
-export function loggerFactory() {
+export function loggerFactory(): ILogger {
   return new Logger();
 }
 
