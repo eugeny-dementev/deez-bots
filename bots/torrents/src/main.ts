@@ -5,7 +5,7 @@ import { adminId, qMoviesDir, publishersIds, token } from './config.js';
 import { handleQBTFile, handleTopic } from './queue.js';
 import { loggerFactory } from '@libs/actions';
 import { ConfigWatcher, TrackingTopic } from './watcher.js';
-import { Scheduler } from './sheduler.js';
+import { Scheduler } from './scheduler.js';
 import { warn } from 'console';
 
 const logger = loggerFactory();

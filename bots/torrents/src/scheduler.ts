@@ -100,6 +100,8 @@ export class Scheduler extends EventEmitter {
     this.logger.info('Timeout set for ' + topicConfig.query, {
       timeout,
       targetDate: new Date(timeout + Date.now()).toString(),
+      currentTime: new Date().toString(),
+      hoursUntil: new Date(timeout).getUTCHours(),
       ...topicConfig,
     });
 
