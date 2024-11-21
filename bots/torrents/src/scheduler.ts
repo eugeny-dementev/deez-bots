@@ -11,7 +11,7 @@ import { ConfigWatcher, TrackingTopic, Type } from "./watcher";
 const THIRTY_MINUTES_MS = 30 * 60 * 1000;
 
 export enum Hour {
-  TVShow = 10, // 18:00 in UTC+8
+  TVShow = 9, // 17:00 in UTC+8
   Game = 19, // 03:00 in UTC+8
 }
 
