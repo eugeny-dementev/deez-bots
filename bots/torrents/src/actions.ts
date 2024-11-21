@@ -486,7 +486,7 @@ export class SearchTopic extends Action<TopicConfigContext & CompContext> {
 export type TopicContext = { topic: Topic };
 export class CheckTopicInDB extends Action<TopicContext & CompContext> {
   async execute(context: TopicContext & CompContext & QueueContext): Promise<void> {
-    const { topic } = context;
+    const { topic, tadd } = context;
 
     const db = new DB();
 
@@ -508,6 +508,8 @@ export class CheckTopicInDB extends Action<TopicContext & CompContext> {
         topic: topic,
         dbTopic,
       });
+      await tadd('No updates found, resheduling');
+
       context.abort();
       return;
     }
