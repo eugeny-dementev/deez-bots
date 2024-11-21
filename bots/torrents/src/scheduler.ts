@@ -7,7 +7,6 @@ import { ConfigWatcher, TrackingTopic, Type } from "./watcher";
  * @WARNING: All time calculations and scheduling are done in UTC-0 timezone
  */
 
-// const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const THIRTY_MINUTES_MS = 30 * 60 * 1000;
 
 export enum Hour {
