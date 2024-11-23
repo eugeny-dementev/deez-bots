@@ -1,8 +1,8 @@
 import { QueueRunner } from 'async-queue-runner';
 import { Bot, Context } from 'grammy';
 import { FileFlavor, hydrateFiles } from '@grammyjs/files';
-import { adminId, qMoviesDir, publishersIds, token } from './config.js';
-import { handleQBTFile, handleTvShowTopic } from './queue.js';
+import { adminId, qMoviesDir, publishersIds, token, qGamesDir, gamesDir } from './config.js';
+import { handleGameTopic, handleQBTFile, handleTvShowTopic } from './queue.js';
 import { loggerFactory } from '@libs/actions';
 import { ConfigWatcher, TrackingTopic } from './watcher.js';
 import { Scheduler } from './scheduler.js';
@@ -93,10 +93,27 @@ const scheduler = new Scheduler(logger, watcher);
 function handleTopicEvent(topicConfig: TrackingTopic) {
   switch (topicConfig.type) {
     case 'tv_show': {
-      queue.add(handleTvShowTopic(), { bot, logger, adminId: adminChatId, chatId: adminChatId, topicConfig, scheduleNextCheck: scheduler.hookForRescheduling });
+      queue.add(handleTvShowTopic(), {
+        bot,
+        logger,
+        adminId: adminChatId,
+        chatId: adminChatId,
+        topicConfig,
+        scheduleNextCheck: () => scheduler.hookForRescheduling(topicConfig),
+      });
       break;
     }
     case 'game': {
+      queue.add(handleGameTopic(), {
+        bot,
+        logger,
+        adminId: adminChatId,
+        chatId: adminChatId,
+        topicConfig,
+        qdir: qGamesDir,
+        fdir: gamesDir,
+        scheduleNextCheck: () => scheduler.hookForRescheduling(topicConfig),
+      });
       break;
     }
   }
