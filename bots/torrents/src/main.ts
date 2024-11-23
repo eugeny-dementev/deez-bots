@@ -90,13 +90,20 @@ bot.catch((err) => logger.error(err))
 const watcher = new ConfigWatcher();
 const scheduler = new Scheduler(logger, watcher);
 
-scheduler.on('topic', (topicConfig: TrackingTopic) => {
-  queue.add(handleTvShowTopic(), { bot, logger, adminId: adminChatId, chatId: adminChatId, topicConfig, scheduleNextCheck: scheduler.hookForRescheduling });
-});
+function handleTopicEvent(topicConfig: TrackingTopic) {
+  switch (topicConfig.type) {
+    case 'tv_show': {
+      queue.add(handleTvShowTopic(), { bot, logger, adminId: adminChatId, chatId: adminChatId, topicConfig, scheduleNextCheck: scheduler.hookForRescheduling });
+      break;
+    }
+    case 'game': {
+      break;
+    }
+  }
+}
 
-watcher.on('topic', (topicConfig: TrackingTopic) => {
-  queue.add(handleTvShowTopic(), { bot, logger, adminId: adminChatId, chatId: adminChatId, topicConfig, scheduleNextCheck: scheduler.hookForRescheduling });
-});
+scheduler.on('topic', handleTopicEvent);
+watcher.on('topic', handleTopicEvent);
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop());
