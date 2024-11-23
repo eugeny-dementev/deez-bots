@@ -28,8 +28,6 @@ export class Scheduler extends EventEmitter {
   ) {
     super();
 
-    this.hookForRescheduling = this.hookForRescheduling.bind(this);
-
     this.start().catch((error) => this.logger.error(error));
   }
 
