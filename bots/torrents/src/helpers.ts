@@ -32,6 +32,11 @@ export function omit(obj: object, ...keys: string[]) {
   return Object.fromEntries(entries);
 }
 
+export function pick(obj: object, ...keys: string[]) {
+  const entries = Object.entries(obj).filter(([key]) => keys.includes(key));
+  return Object.fromEntries(entries);
+}
+
 export function sleep(timeout: number) {
   return new Promise((res) => setTimeout(res, timeout));
 }
