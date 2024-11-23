@@ -45,7 +45,7 @@ export const handleQBTFile: () => QueueAction[] = () => [
   DeleteFile,
 ];
 
-export const handleTopic: () => QueueAction[] = () => [
+export const handleTvShowTopic: () => QueueAction[] = () => [
   InjectLogger,
   InjectNotifications,
   notifications.tadd<TopicConfigContext>(({ topicConfig }) => `Analyzing topic: ${topicConfig.query}`),

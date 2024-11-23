@@ -2,7 +2,7 @@ import { QueueRunner } from 'async-queue-runner';
 import { Bot, Context } from 'grammy';
 import { FileFlavor, hydrateFiles } from '@grammyjs/files';
 import { adminId, qMoviesDir, publishersIds, token } from './config.js';
-import { handleQBTFile, handleTopic } from './queue.js';
+import { handleQBTFile, handleTvShowTopic } from './queue.js';
 import { loggerFactory } from '@libs/actions';
 import { ConfigWatcher, TrackingTopic } from './watcher.js';
 import { Scheduler } from './scheduler.js';
@@ -91,11 +91,11 @@ const watcher = new ConfigWatcher();
 const scheduler = new Scheduler(logger, watcher);
 
 scheduler.on('topic', (topicConfig: TrackingTopic) => {
-  queue.add(handleTopic(), { bot, logger, adminId: adminChatId, chatId: adminChatId, topicConfig, scheduleNextCheck: scheduler.hookForRescheduling });
+  queue.add(handleTvShowTopic(), { bot, logger, adminId: adminChatId, chatId: adminChatId, topicConfig, scheduleNextCheck: scheduler.hookForRescheduling });
 });
 
 watcher.on('topic', (topicConfig: TrackingTopic) => {
-  queue.add(handleTopic(), { bot, logger, adminId: adminChatId, chatId: adminChatId, topicConfig, scheduleNextCheck: scheduler.hookForRescheduling });
+  queue.add(handleTvShowTopic(), { bot, logger, adminId: adminChatId, chatId: adminChatId, topicConfig, scheduleNextCheck: scheduler.hookForRescheduling });
 });
 
 // Enable graceful stop
