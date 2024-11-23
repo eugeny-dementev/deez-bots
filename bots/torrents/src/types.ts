@@ -15,7 +15,6 @@ type BLogger = {
 export type BotContext = {
   bot: Bot,
   filePath: string,
-  logger: Logger,
   destination: string,
   blogger: BLogger,
   adminId: number,
