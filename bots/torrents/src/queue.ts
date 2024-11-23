@@ -75,3 +75,20 @@ export const handleTvShowTopic: () => QueueAction[] = () => [
   }),
   DeleteFile,
 ];
+
+export const handleGameTopic: () => QueueAction[] = () => [
+  InjectLogger,
+  InjectNotifications,
+  notifications.tadd<TopicConfigContext>(({ topicConfig }) => `Analyzing game topic: ${topicConfig.query}`),
+  SearchTopic,
+  SetLastCheckedDate,
+  ScheduleNextCheck,
+  DownloadTopicFile,
+  notifications.tadd('New topic torrent file downloaded'),
+  notifications.tadd('Adding torrent to download'),
+  AddUploadToQBitTorrent,
+  notifications.tadd('Start monitoring download progress'),
+  util.delay(5000),
+  MonitorDownloadingProgress,
+  DeleteFile,
+];
