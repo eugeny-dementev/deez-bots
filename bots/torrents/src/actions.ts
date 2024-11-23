@@ -357,6 +357,74 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
   }
 }
 
+export class RemoveOldTorrentItem extends Action<CompContext & { torrentName: string }> {
+  async execute(context: BotContext & LoggerOutput & NotificationsOutput & { torrentName: string; } & QueueContext): Promise<void> {
+    const { torrentName, tadd } = context;
+
+    const response = await fetch(`${qBitTorrentHost}/api/v2/torrents/info?filter=downloading`);
+    const torrents = JSON.parse(await response.text()) as TorrentStatus[];
+    const currentNameTorrents = torrents
+      .filter(t => t.name === torrentName)
+      .sort((a, b) => b.added_on - a.added_on);
+
+
+    if (currentNameTorrents.length === 0) {
+      context.logger.error(new Error(`No torrent found for the name`), {
+        torrentName,
+      });
+    }
+
+    if (currentNameTorrents.length === 1) {
+      context.logger.info('No torrrent duplicates found', {
+        torrentName,
+        torrents: currentNameTorrents.map(t => ({
+          name: t.name,
+          addedOn: new Date(t.added_on * 1000).toString(),
+        })),
+      });
+      return;
+    }
+
+    const freshest = currentNameTorrents.shift()!;
+
+    context.logger.info('Freshest torrent extracted', {
+      torrentName,
+      addedOn: new Date(freshest.added_on * 1000).toString(),
+      progress: freshest.progress,
+      hash: freshest.hash,
+    });
+
+    for (const oldTorrent of currentNameTorrents) {
+      const response = await fetch(`${qBitTorrentHost}/api/v2/torrents/delete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          hashes: oldTorrent.hash,
+          deleteFiles: 'false',
+        }),
+      });
+
+      if (!response.ok) {
+        context.logger.error(new Error(`Failed to delete torrent: ${response.statusText}`), {
+          ok: response.ok,
+          text: response.statusText,
+          code: response.status,
+          type: response.type,
+        });
+      }
+
+      context.logger.info('Old torrent item removed', {
+        torrentName,
+        addedOn: new Date(oldTorrent.added_on * 1000).toString(),
+        progress: oldTorrent.progress,
+        hash: oldTorrent.hash,
+      });
+    }
+  }
+}
+
 export class MonitorDownloadingProgress extends Action<CompContext & { torrentName: string }> {
   async execute(context: { torrentName: string; } & CompContext & QueueContext): Promise<void> {
     const { torrentName, tlog, terr } = context;
