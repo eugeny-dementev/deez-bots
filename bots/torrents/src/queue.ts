@@ -10,6 +10,7 @@ import {
   DownloadTopicFile,
   ExtractTorrentPattern,
   MonitorDownloadingProgress,
+  RemoveOldTorrentItem,
   RenameFile,
   ScheduleNextCheck,
   SearchTopic,
@@ -43,6 +44,7 @@ export const handleQBTFile: () => QueueAction[] = () => [
     ],
   }),
   DeleteFile,
+  RemoveOldTorrentItem,
 ];
 
 export const handleTvShowTopic: () => QueueAction[] = () => [
@@ -74,6 +76,7 @@ export const handleTvShowTopic: () => QueueAction[] = () => [
     ],
   }),
   DeleteFile,
+  RemoveOldTorrentItem,
 ];
 
 export const handleGameTopic: () => QueueAction[] = () => [
@@ -91,4 +94,5 @@ export const handleGameTopic: () => QueueAction[] = () => [
   util.delay(5000),
   MonitorDownloadingProgress,
   DeleteFile,
+  RemoveOldTorrentItem,
 ];
