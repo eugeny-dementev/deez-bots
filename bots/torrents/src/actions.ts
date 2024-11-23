@@ -577,12 +577,12 @@ export class SetLastCheckedDate extends Action<TopicContext & CompContext> {
   }
 }
 
-export type SchedulerContext = { scheduleNextCheck: (topicConfig: TrackingTopic) => void }
+export type SchedulerContext = { scheduleNextCheck: () => void }
 export class ScheduleNextCheck extends Action<SchedulerContext & TopicConfigContext & CompContext> {
   async execute(context: SchedulerContext & TopicConfigContext & CompContext & QueueContext): Promise<void> {
-    const { topicConfig, scheduleNextCheck } = context;
+    const { scheduleNextCheck } = context;
 
-    scheduleNextCheck(topicConfig);
+    scheduleNextCheck();
   }
 }
 
