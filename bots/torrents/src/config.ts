@@ -21,10 +21,12 @@ export const dirMaps = String(process.env.DIR_MAPS);
 export const qMoviesDir = String(process.env.Q_MOVIES_DIR);
 export const qTvshowsDir = String(process.env.Q_TV_SHOWS_DIR);
 export const qRawShowsDir = String(process.env.Q_RAW_TV_SHOWS_DIR);
+export const qGamesDir = String(process.env.Q_GAMES_DIR);
 
 export const moviesDir = String(process.env.MOVIES_DIR);
 export const tvshowsDir = String(process.env.TV_SHOWS_DIR);
 export const rawShowsDir = String(process.env.RAW_TV_SHOWS_DIR);
+export const gamesDir = String(process.env.GAMES_DIR);
 
 export const audioPriorities = String(process.env.AUDIO_PRIORITIES).split(',');
 export const subsPriorities = String(process.env.SUBTITLE_PRIORITIES).split(',');
