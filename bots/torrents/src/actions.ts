@@ -359,7 +359,16 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
 
 export class RemoveOldTorrentItem extends Action<CompContext & { torrentName: string }> {
   async execute(context: BotContext & LoggerOutput & NotificationsOutput & { torrentName: string; } & QueueContext): Promise<void> {
-    const { torrentName, tadd } = context;
+    const { filePath, tadd } = context;
+
+    const file = await readFile(path.resolve(filePath));
+    const torrent = await parseTorrent(file) as Torrent;
+    const torrentName = torrent.name;
+
+    context.logger.info('Searching old torrents to remove', {
+      torrentName,
+      filePath,
+    });
 
     const response = await fetch(`${qBitTorrentHost}/api/v2/torrents/info?filter=downloading`);
     const torrents = JSON.parse(await response.text()) as TorrentStatus[];
@@ -415,12 +424,17 @@ export class RemoveOldTorrentItem extends Action<CompContext & { torrentName: st
         });
       }
 
+      const oldDate = new Date(oldTorrent.added_on * 1000);
+
       context.logger.info('Old torrent item removed', {
         torrentName,
-        addedOn: new Date(oldTorrent.added_on * 1000).toString(),
+        addedOn: oldDate.toString(),
         progress: oldTorrent.progress,
         hash: oldTorrent.hash,
       });
+
+      const formatter = Intl.DateTimeFormat(undefined, { month: 'long', day: 'numeric' });
+      tadd(`Removing old ${torrentName} added on ${formatter.format(oldDate)}`);
     }
   }
 }
