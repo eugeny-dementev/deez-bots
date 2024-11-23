@@ -47,6 +47,8 @@ export type TorrentStatus = {
   progress: number, // float 0.0 - 1.0
   content_ath: string,
   name: string,
+  hash: string,
+  added_on: number, // date in seconds
 }
 
 export type MultiTrack = {
