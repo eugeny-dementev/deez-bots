@@ -48,7 +48,7 @@ export const handleQBTFile: () => QueueAction[] = () => [
 export const handleTvShowTopic: () => QueueAction[] = () => [
   InjectLogger,
   InjectNotifications,
-  notifications.tadd<TopicConfigContext>(({ topicConfig }) => `Analyzing topic: ${topicConfig.query}`),
+  notifications.tadd<TopicConfigContext>(({ topicConfig }) => `Analyzing tv show topic: ${topicConfig.query}`),
   SearchTopic,
   SetLastCheckedDate,
   ScheduleNextCheck,
