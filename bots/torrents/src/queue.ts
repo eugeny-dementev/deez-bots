@@ -75,8 +75,8 @@ export const handleTvShowTopic: () => QueueAction[] = () => [
       ConvertMultiTrack,
     ],
   }),
-  DeleteFile,
   RemoveOldTorrentItem,
+  DeleteFile,
 ];
 
 export const handleGameTopic: () => QueueAction[] = () => [
@@ -94,6 +94,6 @@ export const handleGameTopic: () => QueueAction[] = () => [
   notifications.tadd('Start monitoring download progress'),
   util.delay(5000),
   MonitorDownloadingProgress,
-  DeleteFile,
   RemoveOldTorrentItem,
+  DeleteFile,
 ];
