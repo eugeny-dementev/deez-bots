@@ -357,13 +357,23 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
   }
 }
 
-export class RemoveOldTorrentItem extends Action<CompContext & { torrentName: string }> {
-  async execute(context: BotContext & LoggerOutput & NotificationsOutput & { torrentName: string; } & QueueContext): Promise<void> {
+export class ReadTorrentFile extends Action<CompContext & { torrentName: string }> {
+  async execute(context: CompContext & { torrentName: string; } & QueueContext): Promise<void> {
     const { filePath, tadd } = context;
 
     const file = await readFile(path.resolve(filePath));
     const torrent = await parseTorrent(file) as Torrent;
     const torrentName = torrent.name;
+
+    tadd(`Torrent name: ${torrentName}`);
+
+    context.extend({ torrentName });
+  }
+}
+
+export class RemoveOldTorrentItem extends Action<CompContext & { torrentName: string }> {
+  async execute(context: BotContext & LoggerOutput & NotificationsOutput & { torrentName: string; } & QueueContext): Promise<void> {
+    const { filePath, torrentName, tadd } = context;
 
     context.logger.info('Searching old torrents to remove', {
       torrentName,
