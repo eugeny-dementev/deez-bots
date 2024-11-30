@@ -36,6 +36,7 @@
     "@types/shelljs": "^0.8.15",
     "async-queue-runner": "^0.19.0",
     "axios": "^1.6.0",
+    "chokidar": "^4.0.1",
     "clean-stack": "^5.2.0",
     "del": "^6.1.1",
     "expand-tilde": "^2.0.2",
