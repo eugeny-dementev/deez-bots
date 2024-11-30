@@ -1,7 +1,8 @@
 import expandTilde from 'expand-tilde';
 import crypto from 'node:crypto';
 import EventEmitter from 'node:events';
-import { watch, WatchEventType, readFile, promises } from 'node:fs';
+import { readFile, promises } from 'node:fs';
+import { watch, FSWatcher } from 'chokidar';
 import path from 'node:path';
 
 const trackingFile = 'tracking.json'
@@ -22,42 +23,44 @@ export type TrackingConfig = {
 export class ConfigWatcher extends EventEmitter {
   private hashes = new Map<string, string>();
 
+  private fileWatcher: FSWatcher
+
   constructor() {
     super()
 
-    watch(fullTrackingPath, (event: WatchEventType, filename: string | null) => {
-      if (event === 'change' && filename === trackingFile) {
-        readFile(fullTrackingPath, (err, buf) => {
-          if (err) {
-            console.log('Error while tryint to watch', fullTrackingPath);
-            console.error(err);
+    this.fileWatcher = watch(fullTrackingPath);
+    this.fileWatcher.on('change', () => {
+      readFile(fullTrackingPath, (err, buf) => {
+        if (err) {
+          console.log('Error while tryint to watch', fullTrackingPath);
+          console.error(err);
+          return;
+        }
+
+        try {
+          const content = buf.toString();
+          const configHash = this.getHash(content);
+          if (this.hashes.get('full') === configHash) {
             return;
           }
-          try {
-            const content = buf.toString();
-            const configHash = this.getHash(content);
-            if (this.hashes.get('full') === configHash) {
+          this.hashes.set('full', configHash);
+
+          const config = JSON.parse(content.toString()) as TrackingConfig;
+
+          config.topics.forEach((topic) => {
+            const topicHash = this.getHash(JSON.stringify(topic));
+            if (this.hashes.get(topic.guid) === topicHash) {
               return;
             }
-            this.hashes.set('full', configHash);
+            this.hashes.set(topic.guid, topicHash);
 
-            const config = JSON.parse(content.toString()) as TrackingConfig;
-
-            config.topics.forEach((topic) => {
-              const topicHash = this.getHash(JSON.stringify(topic));
-              if (this.hashes.get(topic.guid) === topicHash) {
-                return;
-              }
-              this.hashes.set(topic.guid, topicHash);
-
-              this.emit('topic', topic);
-            })
-          } catch (e) {
-            console.log('Failed to parse tracking config');
-            console.error(e)
-          }
-        })
-      }
+            this.emit('topic', topic);
+          })
+        } catch (e) {
+          console.log('Failed to parse tracking config');
+          console.error(e)
+        }
+      });
     });
   }
 
