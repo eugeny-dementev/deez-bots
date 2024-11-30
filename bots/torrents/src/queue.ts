@@ -10,6 +10,7 @@ import {
   DownloadTopicFile,
   ExtractTorrentPattern,
   MonitorDownloadingProgress,
+  ReadTorrentFile,
   RemoveOldTorrentItem,
   RenameFile,
   ScheduleNextCheck,
@@ -68,6 +69,7 @@ export const handleTvShowTopic: () => QueueAction[] = () => [
   AddUploadToQBitTorrent,
   notifications.tadd('Start monitoring download progress'),
   util.delay(5000),
+  ReadTorrentFile,
   MonitorDownloadingProgress,
   util.if<MultiTrackContext>(({ type }) => type === 'multi-track', {
     then: [
@@ -93,6 +95,7 @@ export const handleGameTopic: () => QueueAction[] = () => [
   AddUploadToQBitTorrent,
   notifications.tadd('Start monitoring download progress'),
   util.delay(5000),
+  ReadTorrentFile,
   MonitorDownloadingProgress,
   RemoveOldTorrentItem,
   DeleteFile,
