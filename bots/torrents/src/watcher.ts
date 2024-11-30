@@ -4,6 +4,7 @@ import EventEmitter from 'node:events';
 import { readFile, promises } from 'node:fs';
 import { watch, FSWatcher } from 'chokidar';
 import path from 'node:path';
+import { assert } from '@libs/assert';
 
 const trackingFile = 'tracking.json'
 const trackingPath = path.join('~/.config/torrents', trackingFile);
@@ -46,6 +47,8 @@ export class ConfigWatcher extends EventEmitter {
           this.hashes.set('full', configHash);
 
           const config = JSON.parse(content.toString()) as TrackingConfig;
+
+          assert(Array.isArray(config.topics), 'tracking.json should contain array of topics', config);
 
           config.topics.forEach((topic) => {
             const topicHash = this.getHash(JSON.stringify(topic));
