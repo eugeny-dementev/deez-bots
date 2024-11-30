@@ -12,6 +12,7 @@
     "inlineSourceMap": true,
     "baseUrl": ".",
     "paths": {
+      "@libs/assert": ["libs/assert/src/index.ts"],
       "@libs/actions": ["./libs/actions/src/index.ts"],
       "@libs/command": ["./libs/command/src/index.ts"]
     }
