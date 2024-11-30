@@ -1,10 +1,11 @@
+import { ILogger } from '@libs/actions';
+import { assert } from '@libs/assert';
+import { FSWatcher, watch } from 'chokidar';
 import expandTilde from 'expand-tilde';
 import crypto from 'node:crypto';
 import EventEmitter from 'node:events';
-import { readFile, promises } from 'node:fs';
-import { watch, FSWatcher } from 'chokidar';
+import { promises, readFile } from 'node:fs';
 import path from 'node:path';
-import { assert } from '@libs/assert';
 
 const trackingFile = 'tracking.json'
 const trackingPath = path.join('~/.config/torrents', trackingFile);
@@ -26,8 +27,12 @@ export class ConfigWatcher extends EventEmitter {
 
   private fileWatcher: FSWatcher
 
-  constructor() {
+  constructor(private readonly logger: ILogger) {
     super()
+
+    this.logger.info('Start watching tracking.json config', {
+      fullTrackingPath,
+    });
 
     this.fileWatcher = watch(fullTrackingPath);
     this.fileWatcher.on('change', () => {
