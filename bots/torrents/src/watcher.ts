@@ -34,7 +34,10 @@ export class ConfigWatcher extends EventEmitter {
       fullTrackingPath,
     });
 
-    this.fileWatcher = watch(fullTrackingPath);
+    this.fileWatcher = watch(fullTrackingPath, {
+      usePolling: true, // had to use polling because config file is mounted to docker container and "inotify" events are not triggered
+      interval: 1000,
+    });
     this.fileWatcher.on('change', () => {
       readFile(fullTrackingPath, (err, buf) => {
         if (err) {
