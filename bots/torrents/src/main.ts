@@ -120,7 +120,6 @@ function handleTopicEvent(topicConfig: TrackingTopic) {
 }
 
 scheduler.on('topic', handleTopicEvent);
-watcher.on('topic', handleTopicEvent);
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop());

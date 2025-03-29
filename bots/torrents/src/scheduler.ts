@@ -55,6 +55,13 @@ export class Scheduler extends EventEmitter {
   ) {
     super();
 
+    this.config.on('topic', (topic: TrackingTopic) => {
+      if (this.#plannedCheckTimeMap.has(topic.guid)) {
+        return;
+      }
+
+      this.#plannedCheckTimeMap.set(topic.guid, Date.now());
+    });
     // this.start().catch((error) => this.logger.error(error));
     this.scheduleChecks().catch((error) => this.logger.error(error));
     this.runCheckLoop().catch((error) => this.logger.error(error));
