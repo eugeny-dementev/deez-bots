@@ -19,6 +19,10 @@ export const typeToHour: Record<Type, Hour> = {
   ['game']: Hour.Game,
 }
 
+function delay(timeout: number = 5000) {
+  return new Promise(res => setTimeout(res, timeout));
+}
+
 export class Scheduler extends EventEmitter {
   #timeoutsMap: Map<Topic['guid'], NodeJS.Timeout> = new Map();
 
