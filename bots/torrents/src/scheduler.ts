@@ -88,11 +88,11 @@ export class Scheduler extends EventEmitter {
         const topic = await this.getTopic(topicConfig.guid);
         if (!topic) {
           this.logger.error(new Error(`Topic is not found: ${guid}`));
-          this.emit('topic', topicConfig);
           const timeout = this.calculateTimeout(topicConfig.type, new Date().toString()) + Math.floor(Math.random() * THIRTY_MINUTES_MS);
           const timestamp = Date.now() + timeout;
           this.logger.info('Scheduling next topic check', { guid, date: new Date(timestamp) });
           this.#plannedCheckTimeMap.set(guid, timestamp);
+          this.emit('topic', topicConfig);
           continue;
         }
 
