@@ -88,6 +88,7 @@ export class Scheduler extends EventEmitter {
         const topic = await this.getTopic(topicConfig.guid);
         if (!topic) {
           this.logger.error(new Error(`Topic is not found: ${guid}`));
+          this.emit('topic', topicConfig);
           continue;
         }
 
