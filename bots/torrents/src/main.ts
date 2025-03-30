@@ -22,6 +22,9 @@ const bot = new Bot<MyContext>(token);
 
 bot.api.config.use(hydrateFiles(bot.token));
 
+const watcher = new ConfigWatcher(logger);
+const scheduler = new Scheduler(logger, watcher);
+
 bot.command('start', (ctx) => ctx.reply('Welcome to Sverdlova'));
 bot.command('help', (ctx) => ctx.reply('Send me a torrent with mkv files'));
 
@@ -86,9 +89,6 @@ bot.use((ctx) => {
 
 bot.start({ onStart: (me) => logger.info('Bot launched', me) });
 bot.catch((err) => logger.error(err))
-
-const watcher = new ConfigWatcher(logger);
-const scheduler = new Scheduler(logger, watcher);
 
 function handleTopicEvent(topicConfig: TrackingTopic) {
   switch (topicConfig.type) {
