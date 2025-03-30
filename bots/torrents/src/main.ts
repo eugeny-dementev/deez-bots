@@ -1,12 +1,11 @@
 import { QueueRunner } from 'async-queue-runner';
-import { Bot, Context } from 'grammy';
+import { Bot, Context, Keyboard } from 'grammy';
 import { FileFlavor, hydrateFiles } from '@grammyjs/files';
 import { adminId, qMoviesDir, publishersIds, token, qGamesDir, gamesDir } from './config.js';
 import { handleGameTopic, handleQBTFile, handleTvShowTopic } from './queue.js';
 import { loggerFactory } from '@libs/actions';
 import { ConfigWatcher, TrackingTopic } from './watcher.js';
 import { Scheduler } from './scheduler.js';
-import { warn } from 'console';
 
 const logger = loggerFactory();
 const queue = new QueueRunner({
@@ -27,6 +26,19 @@ const scheduler = new Scheduler(logger, watcher);
 
 bot.command('start', (ctx) => ctx.reply('Welcome to Sverdlova'));
 bot.command('help', (ctx) => ctx.reply('Send me a torrent with mkv files'));
+bot.command('check', async (ctx) => {
+  const topicConfigs = await watcher.getTopicsConfigs()
+
+  const labels = topicConfigs.map((config) => config.query);
+  const buttonRows = labels
+    .map((label) => [Keyboard.text(label)]);
+  const keyboard = Keyboard.from(buttonRows).resized().oneTime();
+
+  // Send keyboard with message.
+  await ctx.reply('some text', {
+    reply_markup: keyboard,
+  });
+});
 
 const allowedUsers = new Set([
   adminId,
