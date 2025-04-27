@@ -380,7 +380,7 @@ export class RemoveOldTorrentItem extends Action<CompContext & { torrentName: st
       filePath,
     });
 
-    const response = await fetch(`${qBitTorrentHost}/api/v2/torrents/info?filter=downloading`);
+    const response = await fetch(`${qBitTorrentHost}/api/v2/torrents/info?filter=seeding`);
     const torrents = JSON.parse(await response.text()) as TorrentStatus[];
     const currentNameTorrents = torrents
       .filter(t => t.name === torrentName)
