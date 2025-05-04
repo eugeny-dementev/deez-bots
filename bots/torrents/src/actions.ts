@@ -330,7 +330,7 @@ export class ConvertMultiTrack extends Action<CompContext & MultiTrackContext> {
       if (hasAudio && !files.audio) {
         context.logger.info(`Skipping ${fileName}(${i} file out of ${size}) due to yet missing audio file`);
         await tlog(`Skipping ${fileName}(${i} file out of ${size}) due to yet missing audio file`);
-        await tadd('');
+        await tadd('-');
         continue;
       }
 
