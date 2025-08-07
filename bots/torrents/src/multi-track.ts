@@ -31,7 +31,7 @@ export function getVideo(patterns: string[]): string {
 export function getAudio(patterns: string[]) {
   const audios = patterns
     .filter((item) => /\.mka$/.test(item))
-    .filter((item) => !/ENG|eng/.test(item))
+    //.filter((item) => !/ENG|eng/.test(item))
     .sort((a, b) => getAudioWeight(b) - getAudioWeight(a));
 
   return audios[0];
@@ -40,7 +40,7 @@ export function getAudio(patterns: string[]) {
 export function getSubs(patterns: string[]) {
   const subs = patterns
     .filter((item) => /\.ass$/.test(item))
-    .filter((item) => !/eng/i.test(item))
+    // .filter((item) => !/eng/i.test(item))
     .sort((a, b) => getSubWeight(b) - getSubWeight(a));
 
   return subs[0];
