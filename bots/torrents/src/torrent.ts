@@ -10,7 +10,7 @@ export function getDestination(files: TFile[]): DestContext {
 
     const parts = path.split('\\');
 
-    if (parts.length > 2 || /S[0-9]{2}E[0-9]{2}/.test(path)) {
+    if (parts.length > 2 || !/S[0-9]{2}E[0-9]{2}/.test(path)) {
       throw new Error('torrent should contain no more than one directory with *.mkv files in it');
     }
 
