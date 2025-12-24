@@ -525,25 +525,49 @@ export type SearchMessageContext = {
 export class SearchByQuery extends Action<SearchQueryContext & CompContext> {
   async execute(context: SearchQueryContext & CompContext & QueueContext): Promise<void> {
     const { query } = context;
-    const url = `${jackettHost}/api/v2.0/indexers/all/results?apikey=${jackettKey}&Query=${encodeURIComponent(query)}`;
+    const baseQuery = query.trim();
+    const hasResolutionSuffix = /\b\d+p$/i.test(baseQuery);
+    const resolutionQueries = ['2160p', '1080p', '720p'].map((res) => `${baseQuery} ${res}`);
+    const searchQueries = hasResolutionSuffix ? [baseQuery] : resolutionQueries;
+    const results: JacketResponseItem[] = [];
+    const seen = new Set<string>();
 
     try {
-      const response = await fetch(url);
+      for (const searchQuery of searchQueries) {
+        const url = `${jackettHost}/api/v2.0/indexers/all/results?apikey=${jackettKey}&Query=${encodeURIComponent(searchQuery)}`;
+        const response = await fetch(url);
 
-      if (!response.ok) {
-        context.logger.warn(`Bad response while searching for query: ${response.statusText}`, {
-          status: response.status,
-          ok: response.ok,
-          url,
-          query,
-        });
-        await context.tlog('Search failed. Try again later.');
-        context.abort();
-        return;
+        if (!response.ok) {
+          context.logger.warn(`Bad response while searching for query: ${response.statusText}`, {
+            status: response.status,
+            ok: response.ok,
+            url,
+            query: searchQuery,
+          });
+          await context.tlog('Search failed. Try again later.');
+          context.abort();
+          return;
+        }
+
+        const data = await response.json();
+        const batch = (data.Results ?? []) as JacketResponseItem[];
+
+        for (const item of batch) {
+          const key = item.Guid || item.Link || item.Title;
+          if (seen.has(key)) {
+            continue;
+          }
+          seen.add(key);
+          results.push(item);
+          if (results.length >= 5) {
+            break;
+          }
+        }
+
+        if (results.length >= 5) {
+          break;
+        }
       }
-
-      const data = await response.json();
-      const results = (data.Results ?? []) as JacketResponseItem[];
 
       if (!results.length) {
         await context.tlog(`No results for "${query}".`);
@@ -564,27 +588,7 @@ export class StoreSearchResults extends Action<SearchQueryContext & SearchResult
   async execute(context: SearchQueryContext & SearchResultsContext & SearchMessageContext & CompContext & QueueContext): Promise<void> {
     const topResults = context.results.slice(0, 5);
     const messageId = context.messageId;
-
-    const timeoutId = setTimeout(async () => {
-      const cached = getSearchResults(context.chatId);
-      if (!cached || !messageId || cached.messageId !== messageId) {
-        return;
-      }
-
-      try {
-        await context.bot.api.editMessageReplyMarkup(context.chatId, messageId, { reply_markup: { inline_keyboard: [] } });
-      } catch (error) {
-        context.logger.warn('Failed to clear expired search keyboard', {
-          chatId: context.chatId,
-          messageId,
-          error,
-        });
-      } finally {
-        clearSearchResults(context.chatId);
-      }
-    }, 60_000);
-
-    setSearchResults(context.chatId, context.query, topResults, messageId, timeoutId);
+    setSearchResults(context.chatId, context.query, topResults, messageId);
     context.extend({ results: topResults });
   }
 }
