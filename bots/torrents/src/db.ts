@@ -24,6 +24,7 @@ const singleTopic = `SELECT guid, publishDate, lastCheckDate FROM ${tableName} W
 const addTopic = `INSERT INTO ${tableName} (guid, publishDate) VALUES (?, ?)`;
 const updatePubDateTopic = `UPDATE ${tableName} SET publishDate = ? WHERE guid = ?`;
 const updateLastCheckDateTopic = `UPDATE ${tableName} SET lastCheckDate = ? WHERE guid = ?`;
+const deleteAllTopics = `DELETE FROM ${tableName}`;
 
 export class DB {
   private readonly db: Promise<Database>;
@@ -67,5 +68,20 @@ export class DB {
     const db = await this.db;
 
     await db.run(updateLastCheckDateTopic, lastCheckDate, guid);
+  }
+
+  async cleanupTopics(allowedGuids: Topic['guid'][]): Promise<number> {
+    await this.init();
+    const db = await this.db;
+
+    if (allowedGuids.length === 0) {
+      const result = await db.run(deleteAllTopics);
+      return result.changes ?? 0;
+    }
+
+    const placeholders = allowedGuids.map(() => '?').join(',');
+    const sql = `DELETE FROM ${tableName} WHERE guid NOT IN (${placeholders})`;
+    const result = await db.run(sql, ...allowedGuids);
+    return result.changes ?? 0;
   }
 }

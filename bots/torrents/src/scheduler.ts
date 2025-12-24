@@ -48,6 +48,7 @@ export class Scheduler extends EventEmitter {
   #timeoutsMap: Map<Topic['guid'], NodeJS.Timeout> = new Map();
 
   #plannedCheckTimeMap: Map<Topic['guid'], Timestamp> = new Map();
+  #lastCleanupDay: string | null = null;
 
   constructor(
     private readonly logger: ILogger,
@@ -127,6 +128,7 @@ export class Scheduler extends EventEmitter {
   }
 
   async getTopic(guid: Topic['guid']): Promise<Topic | undefined> {
+    await this.maybeCleanupDb();
     const db = new DB();
     return db.findTopic(guid);
   }
@@ -166,6 +168,27 @@ export class Scheduler extends EventEmitter {
 
   private getCurrentHour(): number {
     return new Date().getUTCHours();
+  }
+
+  private async maybeCleanupDb(): Promise<void> {
+    const now = new Date();
+    const dayKey = now.toISOString().slice(0, 10);
+    const isNightHourUtc = now.getUTCHours() === 0;
+
+    if (!isNightHourUtc || this.#lastCleanupDay === dayKey) {
+      return;
+    }
+
+    const topicsConfigs = await this.config.getTopicsConfigs();
+    const allowedGuids = topicsConfigs.map((config) => config.guid);
+    const db = new DB();
+    const deleted = await db.cleanupTopics(allowedGuids);
+
+    this.logger.info('DB cleanup complete', {
+      deleted,
+      allowed: allowedGuids.length,
+    });
+    this.#lastCleanupDay = dayKey;
   }
 
   private scheduleEvent(topicConfig: TrackingTopic, timeout: number) {
