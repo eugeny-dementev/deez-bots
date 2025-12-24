@@ -4,6 +4,7 @@ import { Action, lockingClassFactory, QueueContext } from 'async-queue-runner';
 import expandTilde from 'expand-tilde';
 import * as fs from 'fs';
 import { glob } from 'glob';
+import { InlineKeyboard, InputFile } from 'grammy';
 import { Readable } from 'node:stream';
 import { finished } from 'node:stream/promises';
 import { ReadableStream } from 'node:stream/web';
@@ -35,7 +36,9 @@ import {
   sleep,
   wildifySquareBrackets
 } from './helpers.js';
+import { JacketResponseItem } from './jackett.js';
 import multiTrackRecognizer from './multi-track.js';
+import { clearSearchResults, getSearchResults, setSearchResults } from './search-store.js';
 import { getDestination } from './torrent.js';
 import { BotContext, DestContext, MultiTrack, MultiTrackContext, QBitTorrentContext, Torrent, TorrentStatus } from './types.js';
 import { TrackingTopic } from './watcher.js';
@@ -498,18 +501,221 @@ export class DeleteFile extends Action<CompContext> {
   }
 }
 
-export type JacketResponseItem = {
-  Guid: string,
-  Link: string,
-  PublishDate: string,
-  Title: string
-}
 export type Topic = {
   link: string,
   title: string,
   guid: string,
   publishDate: string,
 }
+export type SearchQueryContext = {
+  query: string,
+}
+export type SearchResultsContext = {
+  results: JacketResponseItem[],
+}
+export type SearchResultIndexContext = {
+  index: number,
+}
+export type SearchResultContext = {
+  result: JacketResponseItem,
+}
+export type SearchMessageContext = {
+  messageId?: number,
+}
+export class SearchByQuery extends Action<SearchQueryContext & CompContext> {
+  async execute(context: SearchQueryContext & CompContext & QueueContext): Promise<void> {
+    const { query } = context;
+    const url = `${jackettHost}/api/v2.0/indexers/all/results?apikey=${jackettKey}&Query=${encodeURIComponent(query)}`;
+
+    try {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        context.logger.warn(`Bad response while searching for query: ${response.statusText}`, {
+          status: response.status,
+          ok: response.ok,
+          url,
+          query,
+        });
+        await context.tlog('Search failed. Try again later.');
+        context.abort();
+        return;
+      }
+
+      const data = await response.json();
+      const results = (data.Results ?? []) as JacketResponseItem[];
+
+      if (!results.length) {
+        await context.tlog(`No results for "${query}".`);
+        context.abort();
+        return;
+      }
+
+      context.extend({ results });
+    } catch (error) {
+      context.logger.error(error as Error);
+      await context.tlog('Search failed. Try again later.');
+      context.abort();
+    }
+  }
+}
+
+export class StoreSearchResults extends Action<SearchQueryContext & SearchResultsContext & SearchMessageContext & CompContext> {
+  async execute(context: SearchQueryContext & SearchResultsContext & SearchMessageContext & CompContext & QueueContext): Promise<void> {
+    const topResults = context.results.slice(0, 5);
+    const messageId = context.messageId;
+
+    const timeoutId = setTimeout(async () => {
+      const cached = getSearchResults(context.chatId);
+      if (!cached || !messageId || cached.messageId !== messageId) {
+        return;
+      }
+
+      try {
+        await context.bot.api.editMessageReplyMarkup(context.chatId, messageId, { reply_markup: { inline_keyboard: [] } });
+      } catch (error) {
+        context.logger.warn('Failed to clear expired search keyboard', {
+          chatId: context.chatId,
+          messageId,
+          error,
+        });
+      } finally {
+        clearSearchResults(context.chatId);
+      }
+    }, 60_000);
+
+    setSearchResults(context.chatId, context.query, topResults, messageId, timeoutId);
+    context.extend({ results: topResults });
+  }
+}
+
+export class ReplySearchResults extends Action<SearchQueryContext & SearchResultsContext & CompContext> {
+  async execute(context: SearchQueryContext & SearchResultsContext & CompContext & QueueContext): Promise<void> {
+    const { query, results } = context;
+    const topResults = results.slice(0, 5);
+
+    const keyboard = new InlineKeyboard();
+    topResults.forEach((_, index) => {
+      const title = topResults[index].Title ?? `Result ${index + 1}`;
+      const numberedTitle = `${index + 1}. ${title}`;
+      const label = numberedTitle.length > 60 ? `${numberedTitle.slice(0, 57)}...` : numberedTitle;
+      keyboard.text(label, `search:get:${index + 1}`).row();
+    });
+    keyboard.text('Cancel', 'search:cancel');
+
+    const list = topResults
+      .map((item, index) => `${index + 1}. ${item.Title}`)
+      .join('\n');
+    const message = await context.bot.api.sendMessage(
+      context.chatId,
+      `Results for "${query}":\n${list}\n\nTap a button below.`,
+      { reply_markup: keyboard }
+    );
+
+    context.extend({ messageId: message.message_id });
+  }
+}
+
+export class ResolveSearchResult extends Action<SearchResultIndexContext & CompContext> {
+  async execute(context: SearchResultIndexContext & CompContext & QueueContext): Promise<void> {
+    const { chatId, index } = context;
+    const cached = getSearchResults(chatId);
+
+    if (!cached || cached.results.length === 0) {
+      await context.tlog('No recent search results. Send a text query first.');
+      context.abort();
+      return;
+    }
+
+    if (!Number.isInteger(index) || index < 1 || index > cached.results.length) {
+      await context.tlog(`Invalid id. Use /get <1-${cached.results.length}> from the latest search.`);
+      context.abort();
+      return;
+    }
+
+    context.extend({ result: cached.results[index - 1] });
+  }
+}
+
+export class DownloadSearchResultFile extends Action<SearchResultContext & CompContext> {
+  async execute(context: SearchResultContext & CompContext & QueueContext): Promise<void> {
+    const { result } = context;
+    const fileName = result.Title
+      .toLowerCase()
+      .split('')
+      .map((char: string) => {
+        if (russianLetters.has(char)) {
+          return russianToEnglish[char as keyof typeof russianToEnglish] || char;
+        } else return char;
+      })
+      .join('')
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9_]/g, '');
+    const absolutePathDownloadsDir = expandTilde(downloadsDir);
+    const safeFileName = fileName || `torrent_${Date.now()}`;
+    const destination = path.join(absolutePathDownloadsDir, `${safeFileName}.torrent`);
+
+    const downloadLink = result.Link.startsWith('http')
+      ? result.Link
+      : `${jackettHost}${result.Link}`;
+
+    try {
+      const response = await fetch(downloadLink);
+      if (!response.ok || !response.body) {
+        context.logger.warn('Failed to download torrent file', {
+          status: response.status,
+          ok: response.ok,
+          link: downloadLink,
+        });
+        await context.tlog('Failed to download torrent file.');
+        context.abort();
+        return;
+      }
+
+      const fileStream = fs.createWriteStream(destination);
+      await finished(Readable.fromWeb(response.body as ReadableStream).pipe(fileStream));
+
+      context.extend({
+        filePath: destination,
+      });
+    } catch (error) {
+      context.logger.error(error as Error);
+      await context.tlog('Failed to download torrent file.');
+      context.abort();
+    }
+  }
+}
+
+export class SendTorrentFile extends Action<CompContext & { filePath: string }> {
+  async execute({ bot, chatId, filePath }: CompContext & { filePath: string } & QueueContext): Promise<void> {
+    const inputFile = new InputFile(filePath);
+    await bot.api.sendDocument(chatId, inputFile);
+  }
+}
+
+export class ClearSearchResults extends Action<SearchMessageContext & CompContext> {
+  async execute(context: SearchMessageContext & CompContext & QueueContext): Promise<void> {
+    const cached = getSearchResults(context.chatId);
+    const messageId = context.messageId ?? cached?.messageId;
+
+    if (messageId) {
+      try {
+        await context.bot.api.editMessageReplyMarkup(context.chatId, messageId, {
+          reply_markup: { inline_keyboard: [] },
+        });
+      } catch (error) {
+        context.logger.warn('Failed to clear search keyboard', {
+          chatId: context.chatId,
+          messageId,
+          error,
+        });
+      }
+    }
+
+    clearSearchResults(context.chatId);
+  }
+}
+
 export type TopicConfigContext = {
   topicConfig: TrackingTopic,
 }

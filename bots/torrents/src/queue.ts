@@ -7,16 +7,24 @@ import {
   ConvertMultiTrack,
   DeleteFile,
   DownloadFile,
+  DownloadSearchResultFile,
   DownloadTopicFile,
   ExtractTorrentPattern,
   MonitorDownloadingProgress,
   ReadTorrentFile,
   RemoveOldTorrentItem,
+  ReplySearchResults,
+  ClearSearchResults,
+  ResolveSearchResult,
   RenameFile,
   ScheduleNextCheck,
   SearchTopic,
+  SearchByQuery,
+  SendTorrentFile,
   SetLastCheckedDate,
-  TopicConfigContext
+  StoreSearchResults,
+  TopicConfigContext,
+  SearchQueryContext
 } from './actions.js';
 import { MultiTrackContext } from './types.js';
 
@@ -99,4 +107,28 @@ export const handleGameTopic: () => QueueAction[] = () => [
   MonitorDownloadingProgress,
   RemoveOldTorrentItem,
   DeleteFile,
+];
+
+export const handleSearchQuery: () => QueueAction[] = () => [
+  InjectLogger,
+  InjectNotifications,
+  notifications.tadd<SearchQueryContext>(({ query }) => `Searching: ${query}`),
+  SearchByQuery,
+  ReplySearchResults,
+  StoreSearchResults,
+];
+
+export const handleSearchDownload: () => QueueAction[] = () => [
+  InjectLogger,
+  InjectNotifications,
+  ResolveSearchResult,
+  DownloadSearchResultFile,
+  SendTorrentFile,
+  DeleteFile,
+];
+
+export const handleSearchCancel: () => QueueAction[] = () => [
+  InjectLogger,
+  InjectNotifications,
+  ClearSearchResults,
 ];

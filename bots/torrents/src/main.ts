@@ -2,7 +2,7 @@ import { QueueRunner } from 'async-queue-runner';
 import { Bot, Context, Keyboard } from 'grammy';
 import { FileFlavor, hydrateFiles } from '@grammyjs/files';
 import { adminId, qMoviesDir, publishersIds, token, qGamesDir, gamesDir } from './config.js';
-import { handleGameTopic, handleQBTFile, handleTvShowTopic } from './queue.js';
+import { handleGameTopic, handleQBTFile, handleSearchCancel, handleSearchDownload, handleSearchQuery, handleTvShowTopic } from './queue.js';
 import { loggerFactory } from '@libs/actions';
 import { ConfigWatcher, TrackingTopic } from './watcher.js';
 import { Scheduler } from './scheduler.js';
@@ -26,6 +26,18 @@ const scheduler = new Scheduler(logger, watcher);
 
 bot.command('start', (ctx) => ctx.reply('Welcome to Sverdlova'));
 bot.command('help', (ctx) => ctx.reply('Send me a torrent with mkv files'));
+bot.command('get', async (ctx) => {
+  const match = typeof ctx.match === 'string' ? ctx.match.trim() : '';
+  const index = Number(match);
+
+  if (!Number.isInteger(index)) {
+    await ctx.reply('Usage: /get <1-5>');
+    return;
+  }
+
+  const chatId = ctx.chat?.id ?? 0;
+  queue.add(handleSearchDownload(), { index, bot, logger, adminId: adminChatId, chatId });
+});
 bot.command('check', async (ctx) => {
   const topicConfigs = await watcher.getTopicsConfigs()
 
@@ -48,12 +60,12 @@ const allowedUsers = new Set([
 const adminChatId = adminId;
 
 bot.use(async (ctx, next) => {
-  const userId = ctx.message?.from.id || 0;
+  const userId = ctx.from?.id || 0;
 
   if (allowedUsers.has(userId)) await next();
   else logger.warn('blocked user: ', {
     userId,
-    user: ctx.message?.from.username,
+    user: ctx.from?.username,
   });
 });
 
@@ -82,11 +94,43 @@ bot.on('message:document', async (ctx) => {
   queue.add(handleQBTFile(), { file, fileName, bot, logger, adminId: adminChatId, chatId, dir: qMoviesDir });
 });
 
+bot.on('message:text', async (ctx) => {
+  const message = ctx.message;
+  const chatId = message.chat.id;
+  const query = message.text.trim();
+
+  if (!query || query.startsWith('/')) {
+    return;
+  }
+
+  queue.add(handleSearchQuery(), { query, bot, logger, adminId: adminChatId, chatId });
+});
+
+bot.callbackQuery(/search:get:(\d+)/, async (ctx) => {
+  const index = Number(ctx.match[1]);
+  const chatId = ctx.chat?.id ?? 0;
+  const messageId = ctx.callbackQuery.message?.message_id;
+
+  await ctx.answerCallbackQuery();
+  queue.add(handleSearchDownload(), { index, bot, logger, adminId: adminChatId, chatId, messageId });
+});
+
+bot.callbackQuery('search:cancel', async (ctx) => {
+  const chatId = ctx.chat?.id ?? 0;
+  const messageId = ctx.callbackQuery.message?.message_id;
+
+  await ctx.answerCallbackQuery();
+  queue.add(handleSearchCancel(), { bot, logger, adminId: adminChatId, chatId, messageId });
+});
+
 bot.use((ctx) => {
   try {
+    if (!ctx.message) {
+      return;
+    }
+
     // @ts-ignore-line
     const message = ctx.message!;
-
     const chatId = message.chat.id;
 
     if (adminChatId !== chatId) {
