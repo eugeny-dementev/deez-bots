@@ -519,6 +519,24 @@ export class SearchTopic extends Action<TopicConfigContext & CompContext> {
 
     const url = `${jackettHost}/api/v2.0/indexers/all/results?apikey=${jackettKey}&Query=${encodeURIComponent(topicConfig.query)}`;
 
+    const reportNotFound = async (reason: string): Promise<void> => {
+      context.logger.info(reason, {
+        topicConfig,
+        url,
+      });
+
+      await context.tadd(`No topics found for "${topicConfig.query}" / "${topicConfig.guid}". Update tracking.json.`);
+
+      const db = new DB();
+      const existing = await db.findTopic(topicConfig.guid);
+      if (!existing) {
+        await db.addTopic(topicConfig.guid, new Date(0).toISOString());
+      }
+      await db.updateLastCheckDateTopic(topicConfig.guid, new Date().toISOString());
+
+      context.abort();
+    };
+
     try {
       const response = await fetch(url);
 
@@ -536,11 +554,7 @@ export class SearchTopic extends Action<TopicConfigContext & CompContext> {
       const data = await response.json();
 
       if (!data.Results || !data.Results.length) {
-        context.logger.warn(`No topics found whiel searching: ${topicConfig.query}`, {
-          url,
-          topicConfig,
-        });
-        context.abort();
+        await reportNotFound(`No topics found while searching: ${topicConfig.query}`);
         return;
       }
 
@@ -552,11 +566,7 @@ export class SearchTopic extends Action<TopicConfigContext & CompContext> {
       const responseTopic = torrents.find((torrent) => topicConfig.guid === torrent.Guid);
 
       if (!responseTopic) {
-        context.logger.info('No topics found for provided guid/query pair', {
-          topicConfig,
-          url,
-        });
-        context.abort();
+        await reportNotFound('No topics found for provided guid/query pair');
         return;
       }
 
