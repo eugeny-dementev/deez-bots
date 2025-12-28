@@ -77,7 +77,7 @@ export class Scheduler extends EventEmitter {
 
   async runCheckLoop() {
     while (await delay()) {
-      this.logger.info('Scheduler loop', new Date);
+      this.logger.verbose('Scheduler loop', { now: new Date() });
 
       for (const [guid, timestamp] of this.#plannedCheckTimeMap.entries()) {
         const topicConfig = await this.getTopicConfig(guid);
