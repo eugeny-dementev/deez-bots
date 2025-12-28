@@ -1,4 +1,5 @@
-import { Action, IAction, QueueContext } from "async-queue-runner"
+import { Action, QueueContext } from "./action.js"
+import { IAction } from "async-queue-runner"
 import { Bot } from 'grammy'
 
 export type NotificationsContext = {

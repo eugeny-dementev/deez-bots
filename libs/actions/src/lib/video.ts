@@ -1,5 +1,5 @@
 import { exec, prepare } from "@libs/command";
-import { Action, QueueContext } from "async-queue-runner";
+import { Action, QueueContext } from "./action.js";
 
 export type VideoDimensions = { width: number, height: number };
 export class ExtractVideoDimensions extends Action<{ filePath: string }> {

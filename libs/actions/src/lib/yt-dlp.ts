@@ -1,5 +1,5 @@
 import { exec, prepare } from '@libs/command';
-import { Action, QueueAction, QueueContext } from "async-queue-runner";
+import { Action, QueueAction, QueueContext } from "./action.js";
 import { NotificationsOutput } from './notifications';
 import { LoggerOutput } from './logger';
 
@@ -47,20 +47,16 @@ export class YtDlpDownload extends Action<YtDlpDownloadContext & YtDlpUrlContext
     delete context.ydtemp;
     delete context.ydname;
 
-    try {
-      context.tlog('Downloading video');
-      await exec(command);
-      context.tlog('Video downloaded');
+    context.tlog('Downloading video');
+    await exec(command);
+    context.tlog('Video downloaded');
 
-      context.logger.info('Video downloaded', { url });
-    } catch (stderr: unknown) {
-      const message = parseYtDlpError(stderr as string);
-      const error = new Error(message);
-      context.logger.error(error);
-      context.terr(error);
+    context.logger.info('Video downloaded', { url });
+  }
 
-      context.abort();
-    }
+  async onError(error: Error, context: QueueContext): Promise<void> {
+    const parsed = parseYtDlpError(error.message);
+    await super.onError(new Error(parsed), context);
   }
 }
 
@@ -72,27 +68,20 @@ export class YtDlpSizes extends Action<YtDlpUrlContext & Partial<NotificationsOu
       .add(context.url)
       .toString();
 
-    try {
-      context.logger.info('Checking URL', { url: context.url });
+    context.logger.info('Checking URL', { url: context.url });
 
-      const stdout = await exec(command);
+    const stdout = await exec(command);
 
-      const sizes = parseFormatsListing(stdout);
+    const sizes = parseFormatsListing(stdout);
 
-      context.extend({ sizes } as YtDlpSizesOutput);
+    context.extend({ sizes } as YtDlpSizesOutput);
 
-      context.logger.info('Found YtDlpSizes', { sizes });
-    } catch (stderr: unknown) {
-      let error = stderr;
-      if (typeof stderr === 'string') {
-        const message = parseYtDlpError(stderr as string);
-        error = new Error(message);
-      }
-      context.logger.error(error as Error);
-      context.terr?.(error as Error);
+    context.logger.info('Found YtDlpSizes', { sizes });
+  }
 
-      context.abort();
-    }
+  async onError(error: Error, context: QueueContext): Promise<void> {
+    const parsed = parseYtDlpError(error.message);
+    await super.onError(new Error(parsed), context);
   }
 }
 
