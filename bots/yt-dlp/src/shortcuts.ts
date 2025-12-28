@@ -1,4 +1,4 @@
-import { Action, QueueAction, QueueContext } from "async-queue-runner";
+import { Action, QueueAction, QueueContext } from "@libs/actions";
 
 export const shortcut = {
   extend(object: object): QueueAction {

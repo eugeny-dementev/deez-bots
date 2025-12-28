@@ -1,6 +1,6 @@
 import { LoggerOutput, NotificationsOutput } from '@libs/actions';
 import { exec, prepare } from '@libs/command';
-import { Action, lockingClassFactory, QueueContext } from 'async-queue-runner';
+import { Action, lockingClassFactory, QueueContext } from '@libs/actions';
 import expandTilde from 'expand-tilde';
 import * as fs from 'fs';
 import { glob } from 'glob';
@@ -108,58 +108,54 @@ export class AddUploadToQBitTorrent extends lockingClassFactory<CompContext & QB
   async execute(context: CompContext & QBitTorrentContext & QueueContext) {
     const { qdir, filePath, tlog } = context;
 
-    try {
-      const { page, browser } = await openBrowser(chromium);
+    const { page, browser } = await openBrowser(chromium);
 
-      await page.goto(qBitTorrentHost, {
-        waitUntil: 'networkidle',
-      });
+    await page.goto(qBitTorrentHost, {
+      waitUntil: 'networkidle',
+    });
 
-      const vs = page.viewportSize() || { width: 200, height: 200 };
-      await page.mouse.move(vs.width, vs.height);
-      await page.locator('#uploadButton').click(); // default scope
+    const vs = page.viewportSize() || { width: 200, height: 200 };
+    await page.mouse.move(vs.width, vs.height);
+    await page.locator('#uploadButton').click(); // default scope
 
-      context.logger.info('Clicked to add new download task');
-      context.logger.info(`${filePath} => ${qdir}`);
+    context.logger.info('Clicked to add new download task');
+    context.logger.info(`${filePath} => ${qdir}`);
 
-      // popup is opened, but it exist in iFrame so need to switch scopes to it
-      const uploadPopupFrame = page.frameLocator('#uploadPage_iframe');
+    // popup is opened, but it exist in iFrame so need to switch scopes to it
+    const uploadPopupFrame = page.frameLocator('#uploadPage_iframe');
 
-      // search input[type=file] inside iframe locator
-      const chooseFileButton = uploadPopupFrame.locator('#uploadForm #fileselect');
+    // search input[type=file] inside iframe locator
+    const chooseFileButton = uploadPopupFrame.locator('#uploadForm #fileselect');
 
-      // Start waiting for file chooser before clicking. Note no await.
-      const fileChooserPromise = page.waitForEvent('filechooser');
-      await chooseFileButton.click();
-      const fileChooser = await fileChooserPromise;
-      await fileChooser.setFiles(filePath);
+    // Start waiting for file chooser before clicking. Note no await.
+    const fileChooserPromise = page.waitForEvent('filechooser');
+    await chooseFileButton.click();
+    const fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles(filePath);
 
-      context.logger.info('file choosing ' + filePath);
-      // alternative way to set files to input[type=file]
-      // await chooseFileButton.setInputFiles([filePath]);
-      context.logger.info('torrent file set');
+    context.logger.info('file choosing ' + filePath);
+    // alternative way to set files to input[type=file]
+    // await chooseFileButton.setInputFiles([filePath]);
+    context.logger.info('torrent file set');
 
-      // Set destination path
-      await uploadPopupFrame.locator('#savepath').fill(qdir);
-      context.logger.info('destination set ' + qdir);
+    // Set destination path
+    await uploadPopupFrame.locator('#savepath').fill(qdir);
+    context.logger.info('destination set ' + qdir);
 
-      // submit downloading and wait for popup to close
-      await Promise.all([
-        uploadPopupFrame.locator('button[type="submit"]').click(),
-        page.waitForSelector('#uploadPage_iframe', { state: "detached" }),
-      ])
+    // submit downloading and wait for popup to close
+    await Promise.all([
+      uploadPopupFrame.locator('button[type="submit"]').click(),
+      page.waitForSelector('#uploadPage_iframe', { state: "detached" }),
+    ])
 
-      await tlog('Torrent file submitted');
+    await tlog('Torrent file submitted');
 
-      await closeBrowser(browser);
-    } catch (e) {
-      context.logger.error(e as Error);
+    await closeBrowser(browser);
+  }
 
-      context.terr(e as Error);
-      await tlog('Failed to add torrent to download');
-
-      return context.abort();
-    }
+  async onError(error: Error, context: QueueContext): Promise<void> {
+    await (context as unknown as Partial<CompContext>).tlog?.('Failed to add torrent to download');
+    await super.onError(error, context);
   }
 }
 
@@ -180,28 +176,24 @@ export class CheckTorrentFile extends Action<CompContext & QBitTorrentContext> {
 
     let qdir = '';
     let fdir = '';
-    try {
-      const destObj = getDestination(torrent.files);
-      qdir = destObj.qdir;
-      fdir = destObj.fdir;
+    const destObj = getDestination(torrent.files);
+    qdir = destObj.qdir;
+    fdir = destObj.fdir;
 
-      if (fdir === tvshowsDir) {
-        await tlog('Torrent parsed, TV Show detected');
-      } else if (fdir === moviesDir) {
-        await tlog('Torrent parsed, Movie detected');
-      } else {
-        await tlog('Unsupported torrent detected');
-      }
-    } catch (e) {
-      context.logger.error(e as Error);
-
-      context.terr(e as Error);
-      context.tlog('Torrent file parsing failed');
-
-      return context.abort();
+    if (fdir === tvshowsDir) {
+      await tlog('Torrent parsed, TV Show detected');
+    } else if (fdir === moviesDir) {
+      await tlog('Torrent parsed, Movie detected');
+    } else {
+      await tlog('Unsupported torrent detected');
     }
 
     context.extend({ qdir, fdir } as DestContext);
+  }
+
+  async onError(error: Error, context: QueueContext): Promise<void> {
+    await (context as unknown as Partial<CompContext>).tlog?.('Torrent file parsing failed');
+    await super.onError(error, context);
   }
 }
 
@@ -454,44 +446,40 @@ export class RemoveOldTorrentItem extends Action<CompContext & { torrentName: st
 
 export class MonitorDownloadingProgress extends Action<CompContext & { torrentName: string }> {
   async execute(context: { torrentName: string; } & CompContext & QueueContext): Promise<void> {
-    const { torrentName, tlog, terr } = context;
+    const { torrentName, tlog } = context;
 
-    try {
-      let progressCache = '';
-      let downloaded = false;
-      while (!downloaded) {
-        const response = await fetch(`${qBitTorrentHost}/api/v2/torrents/info?filter=downloading`);
-        const torrents = JSON.parse(await response.text()) as TorrentStatus[];
-        if (torrents.length === 0) downloaded = true;
-        const torrent = torrents.find(t => t.name === torrentName);
-        if (!torrent) {
-          downloaded = true;
-          break;
-        }
-
-        const status = {
-          name: torrent.name,
-          progress: (100 * torrent.progress).toFixed(0),
-        };
-
-        if (progressCache !== status.progress) {
-          await tlog(`${torrentName} progress: ${status.progress}%`);
-          progressCache = status.progress;
-        }
-
-        context.logger.info('torrents', status);
-        await sleep(5000);
+    let progressCache = '';
+    let downloaded = false;
+    while (!downloaded) {
+      const response = await fetch(`${qBitTorrentHost}/api/v2/torrents/info?filter=downloading`);
+      const torrents = JSON.parse(await response.text()) as TorrentStatus[];
+      if (torrents.length === 0) downloaded = true;
+      const torrent = torrents.find(t => t.name === torrentName);
+      if (!torrent) {
+        downloaded = true;
+        break;
       }
 
-      await tlog(`${torrentName} downloaded`);
-    } catch (e) {
-      context.logger.error(e as Error);
+      const status = {
+        name: torrent.name,
+        progress: (100 * torrent.progress).toFixed(0),
+      };
 
-      await terr(e as Error);
-      context.tlog('Monitoring failed');
+      if (progressCache !== status.progress) {
+        await tlog(`${torrentName} progress: ${status.progress}%`);
+        progressCache = status.progress;
+      }
 
-      return context.abort();
+      context.logger.info('torrents', status);
+      await sleep(5000);
     }
+
+    await tlog(`${torrentName} downloaded`);
+  }
+
+  async onError(error: Error, context: QueueContext): Promise<void> {
+    await (context as unknown as Partial<CompContext>).tlog?.('Monitoring failed');
+    await super.onError(error, context);
   }
 }
 
@@ -532,55 +520,54 @@ export class SearchByQuery extends Action<SearchQueryContext & CompContext> {
     const results: JacketResponseItem[] = [];
     const seen = new Set<string>();
 
-    try {
-      for (const searchQuery of searchQueries) {
-        const url = `${jackettHost}/api/v2.0/indexers/all/results?apikey=${jackettKey}&Query=${encodeURIComponent(searchQuery)}`;
-        const response = await fetch(url);
+    for (const searchQuery of searchQueries) {
+      const url = `${jackettHost}/api/v2.0/indexers/all/results?apikey=${jackettKey}&Query=${encodeURIComponent(searchQuery)}`;
+      const response = await fetch(url);
 
-        if (!response.ok) {
-          context.logger.warn(`Bad response while searching for query: ${response.statusText}`, {
-            status: response.status,
-            ok: response.ok,
-            url,
-            query: searchQuery,
-          });
-          await context.tlog('Search failed. Try again later.');
-          context.abort();
-          return;
+      if (!response.ok) {
+        context.logger.warn(`Bad response while searching for query: ${response.statusText}`, {
+          status: response.status,
+          ok: response.ok,
+          url,
+          query: searchQuery,
+        });
+        await context.tlog('Search failed. Try again later.');
+        context.abort();
+        return;
+      }
+
+      const data = await response.json();
+      const batch = (data.Results ?? []) as JacketResponseItem[];
+
+      for (const item of batch) {
+        const key = item.Guid || item.Link || item.Title;
+        if (seen.has(key)) {
+          continue;
         }
-
-        const data = await response.json();
-        const batch = (data.Results ?? []) as JacketResponseItem[];
-
-        for (const item of batch) {
-          const key = item.Guid || item.Link || item.Title;
-          if (seen.has(key)) {
-            continue;
-          }
-          seen.add(key);
-          results.push(item);
-          if (results.length >= 5) {
-            break;
-          }
-        }
-
+        seen.add(key);
+        results.push(item);
         if (results.length >= 5) {
           break;
         }
       }
 
-      if (!results.length) {
-        await context.tlog(`No results for "${query}".`);
-        context.abort();
-        return;
+      if (results.length >= 5) {
+        break;
       }
-
-      context.extend({ results });
-    } catch (error) {
-      context.logger.error(error as Error);
-      await context.tlog('Search failed. Try again later.');
-      context.abort();
     }
+
+    if (!results.length) {
+      await context.tlog(`No results for "${query}".`);
+      context.abort();
+      return;
+    }
+
+    context.extend({ results });
+  }
+
+  async onError(error: Error, context: QueueContext): Promise<void> {
+    await (context as unknown as Partial<CompContext>).tlog?.('Search failed. Try again later.');
+    await super.onError(error, context);
   }
 }
 
@@ -663,30 +650,29 @@ export class DownloadSearchResultFile extends Action<SearchResultContext & CompC
       ? result.Link
       : `${jackettHost}${result.Link}`;
 
-    try {
-      const response = await fetch(downloadLink);
-      if (!response.ok || !response.body) {
-        context.logger.warn('Failed to download torrent file', {
-          status: response.status,
-          ok: response.ok,
-          link: downloadLink,
-        });
-        await context.tlog('Failed to download torrent file.');
-        context.abort();
-        return;
-      }
-
-      const fileStream = fs.createWriteStream(destination);
-      await finished(Readable.fromWeb(response.body as ReadableStream).pipe(fileStream));
-
-      context.extend({
-        filePath: destination,
+    const response = await fetch(downloadLink);
+    if (!response.ok || !response.body) {
+      context.logger.warn('Failed to download torrent file', {
+        status: response.status,
+        ok: response.ok,
+        link: downloadLink,
       });
-    } catch (error) {
-      context.logger.error(error as Error);
       await context.tlog('Failed to download torrent file.');
       context.abort();
+      return;
     }
+
+    const fileStream = fs.createWriteStream(destination);
+    await finished(Readable.fromWeb(response.body as ReadableStream).pipe(fileStream));
+
+    context.extend({
+      filePath: destination,
+    });
+  }
+
+  async onError(error: Error, context: QueueContext): Promise<void> {
+    await (context as unknown as Partial<CompContext>).tlog?.('Failed to download torrent file.');
+    await super.onError(error, context);
   }
 }
 
@@ -703,17 +689,9 @@ export class ClearSearchResults extends Action<SearchMessageContext & CompContex
     const messageId = context.messageId ?? cached?.messageId;
 
     if (messageId) {
-      try {
-        await context.bot.api.editMessageReplyMarkup(context.chatId, messageId, {
-          reply_markup: { inline_keyboard: [] },
-        });
-      } catch (error) {
-        context.logger.warn('Failed to clear search keyboard', {
-          chatId: context.chatId,
-          messageId,
-          error,
-        });
-      }
+      await context.bot.api.editMessageReplyMarkup(context.chatId, messageId, {
+        reply_markup: { inline_keyboard: [] },
+      });
     }
 
     clearSearchResults(context.chatId);
@@ -747,51 +725,46 @@ export class SearchTopic extends Action<TopicConfigContext & CompContext> {
       context.abort();
     };
 
-    try {
-      const response = await fetch(url);
+    const response = await fetch(url);
 
-      if (!response.ok) {
-        context.logger.warn(`Bad response while searching for topics: ${response.statusText}`, {
-          status: response.status,
-          ok: response.ok,
-          url,
-          topicConfig,
-        });
-        context.abort();
-        return;
-      }
-
-      const data = await response.json();
-
-      if (!data.Results || !data.Results.length) {
-        await reportNotFound(`No topics found while searching: ${topicConfig.query}`);
-        return;
-      }
-
-      // Map to a simple format or use the data as you wish
-      const torrents = data.Results.map((torrent: any) => ({
-        ...torrent,
-      })) as JacketResponseItem[];
-
-      const responseTopic = torrents.find((torrent) => topicConfig.guid === torrent.Guid);
-
-      if (!responseTopic) {
-        await reportNotFound('No topics found for provided guid/query pair');
-        return;
-      }
-
-      const topic: Topic = {
-        guid: responseTopic.Guid,
-        link: responseTopic.Link,
-        publishDate: responseTopic.PublishDate,
-        title: responseTopic.Title,
-      };
-
-      context.extend({ topic });
-    } catch (error) {
-      context.logger.error(error as Error);
+    if (!response.ok) {
+      context.logger.warn(`Bad response while searching for topics: ${response.statusText}`, {
+        status: response.status,
+        ok: response.ok,
+        url,
+        topicConfig,
+      });
       context.abort();
+      return;
     }
+
+    const data = await response.json();
+
+    if (!data.Results || !data.Results.length) {
+      await reportNotFound(`No topics found while searching: ${topicConfig.query}`);
+      return;
+    }
+
+    // Map to a simple format or use the data as you wish
+    const torrents = data.Results.map((torrent: any) => ({
+      ...torrent,
+    })) as JacketResponseItem[];
+
+    const responseTopic = torrents.find((torrent) => topicConfig.guid === torrent.Guid);
+
+    if (!responseTopic) {
+      await reportNotFound('No topics found for provided guid/query pair');
+      return;
+    }
+
+    const topic: Topic = {
+      guid: responseTopic.Guid,
+      link: responseTopic.Link,
+      publishDate: responseTopic.PublishDate,
+      title: responseTopic.Title,
+    };
+
+    context.extend({ topic });
   }
 }
 
@@ -853,30 +826,25 @@ export class DownloadTopicFile extends Action<TopicContext & CompContext> {
     const absolutePathDownloadsDir = expandTilde(downloadsDir);
     const destination = path.join(absolutePathDownloadsDir, `${fileName}.torrent`);
 
-    try {
-      const response = await fetch(topic.link);
-      if (!response.ok || !response.body) {
-        context.logger.warn('Failed to download file')
-        context.abort();
-        return;
-      }
-
-      const fileStream = fs.createWriteStream(destination);
-      await finished(Readable.fromWeb(response.body as ReadableStream).pipe(fileStream));
-
-      context.logger.info('Topic file downloaded', {
-        ...topic,
-        fileName,
-        destination
-      });
-
-      context.extend({
-        filePath: destination,
-      });
-    } catch (error) {
-      context.logger.error(error as Error);
+    const response = await fetch(topic.link);
+    if (!response.ok || !response.body) {
+      context.logger.warn('Failed to download file')
       context.abort();
+      return;
     }
+
+    const fileStream = fs.createWriteStream(destination);
+    await finished(Readable.fromWeb(response.body as ReadableStream).pipe(fileStream));
+
+    context.logger.info('Topic file downloaded', {
+      ...topic,
+      fileName,
+      destination
+    });
+
+    context.extend({
+      filePath: destination,
+    });
   }
 }
 
@@ -900,6 +868,6 @@ export class ScheduleNextCheck extends Action<SchedulerContext & TopicConfigCont
 
 export class Log extends Action<any> {
   async execute(context: any): Promise<void> {
-    context.logger.info(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name', 'browser', 'page', 'tlog', 'terr', 'abort'));
+    context.logger.info(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'extend', 'name', 'browser', 'page', 'tlog', 'terr', 'abort'));
   }
 }

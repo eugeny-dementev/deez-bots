@@ -1,4 +1,4 @@
-import { Action, QueueContext } from 'async-queue-runner';
+import { Action, QueueContext } from '@libs/actions';
 import del from 'del';
 import expendTilda from 'expand-tilde';
 import fsPromises from 'fs/promises';
@@ -83,7 +83,7 @@ export class DeleteLimitStatus extends Action<BotContext> {
 
 export class Log extends Action<any> {
   async execute(context: any): Promise<void> {
-    console.log(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name', 'stdout'));
+    console.log(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'extend', 'name', 'stdout'));
   }
 }
 

@@ -1,6 +1,6 @@
 import { LoggerOutput, NotificationsOutput } from '@libs/actions';
 import { exec, prepare } from '@libs/command';
-import { Action, QueueContext } from 'async-queue-runner';
+import { Action, QueueContext } from '@libs/actions';
 import del from 'del';
 import expendTilda from 'expand-tilde';
 import { glob } from 'glob';
@@ -115,7 +115,8 @@ export class FindFile extends Action<CompContext> {
 }
 
 export class ConvertVideo extends Action<LastFileContext & CompContext> {
-  async execute({ lastFile, abort, url, extend, terr, tadd, tlog }: LastFileContext & CompContext & QueueContext): Promise<void> {
+  async execute(context: LastFileContext & CompContext & QueueContext): Promise<void> {
+    const { lastFile, url, extend, tadd, tlog } = context;
     const fileData = path.parse(lastFile);
     const newFileName = `${fileData.name}.new`;
     const newFilePath = path.join(fileData.dir, `${newFileName}.mp4`);
@@ -129,29 +130,24 @@ export class ConvertVideo extends Action<LastFileContext & CompContext> {
       .add(newFilePath)
       .toString();
 
-    try {
-      tadd('Converting video for uploading');
+    tadd('Converting video for uploading');
 
-      await exec(command);
-      await del(lastFile, { force: true });
-      extend({ lastFile: newFilePath });
+    await exec(command);
+    await del(lastFile, { force: true });
+    extend({ lastFile: newFilePath });
 
-      tlog('Video ready for uploading');
-    } catch (stderr: unknown) {
-      if (typeof stderr === 'string') {
-        terr('Failed to convert video ' + url);
-      } else {
-        terr(stderr as Error);
-      }
+    tlog('Video ready for uploading');
+  }
 
-      tlog('Failed to download video');
-      abort();
-    }
+  async onError(error: Error, context: QueueContext): Promise<void> {
+    await (context as unknown as Partial<CompContext>).tlog?.('Failed to download video');
+    await super.onError(error, context);
   }
 }
 
 export class ExtractVideoDimensions extends Action<CompContext & LastFileContext> {
-  async execute({ lastFile, extend, terr, tlog }: LastFileContext & CompContext & QueueContext): Promise<void> {
+  async execute(context: LastFileContext & CompContext & QueueContext): Promise<void> {
+    const { lastFile, extend, tlog } = context;
     // command
     // ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1 .\YKUNMpHk_cs.mp4
     //
@@ -160,29 +156,25 @@ export class ExtractVideoDimensions extends Action<CompContext & LastFileContext
     // height=1280
     const command = `ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1 ${lastFile}`
 
-    try {
-      const stdout = await exec(command);
-      const { width, height } = stdout
-        .trim()
-        .split('\n').map(s => s.trim())
-        .map((str: string): string[] => str.split('=').map(s => s.trim()))
-        .reduce<VideoDimensions>((obj: VideoDimensions, pair: string[]): VideoDimensions => {
-          const field = pair[0] as 'width' | 'height';
-          const value = Number(pair[1]);
-          obj[field] = value;
+    const stdout = await exec(command);
+    const { width, height } = stdout
+      .trim()
+      .split('\n').map(s => s.trim())
+      .map((str: string): string[] => str.split('=').map(s => s.trim()))
+      .reduce<VideoDimensions>((obj: VideoDimensions, pair: string[]): VideoDimensions => {
+        const field = pair[0] as 'width' | 'height';
+        const value = Number(pair[1]);
+        obj[field] = value;
 
-          return obj;
-        }, {} as VideoDimensions);
+        return obj;
+      }, {} as VideoDimensions);
 
-      extend({ width, height });
-    } catch (e: unknown) {
-      if (typeof e === 'string') {
-        tlog('Failed to extract video dimensions');
-        terr(e);
-      } else {
-        terr(e as Error);
-      }
-    }
+    extend({ width, height });
+  }
+
+  async onError(error: Error, context: QueueContext): Promise<void> {
+    await (context as unknown as Partial<CompContext>).tlog?.('Failed to extract video dimensions');
+    await super.onError(error, context);
   }
 }
 

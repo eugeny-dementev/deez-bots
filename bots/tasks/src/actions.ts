@@ -1,5 +1,5 @@
 import { LoggerOutput, NotificationsOutput } from '@libs/actions';
-import { Action, QueueContext } from 'async-queue-runner';
+import { Action, QueueContext } from '@libs/actions';
 import { readFile, writeFile } from 'fs';
 // import { chromium } from 'playwright';
 // playwright-extra is a drop-in replacement for playwright,

@@ -1,6 +1,6 @@
 import { LoggerOutput, NotificationsOutput, parseYtDlpError } from '@libs/actions';
 import { exec, prepare } from '@libs/command';
-import { Action, QueueContext } from 'async-queue-runner';
+import { Action, QueueContext } from '@libs/actions';
 import del from 'del';
 import expendTilda from 'expand-tilde';
 import { glob } from 'glob';
@@ -54,8 +54,8 @@ export class DeleteLimitStatus extends Action<CompContext> {
 
 export class Log extends Action<any> {
   async execute(context: any): Promise<void> {
-    // console.log(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name', 'stdout'));
-    console.log(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'stop', 'extend', 'name'));
+    // console.log(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'extend', 'name', 'stdout'));
+    console.log(`Log(${context.name()}) context:`, omit(context, 'bot', 'push', 'extend', 'name'));
   }
 }
 
@@ -70,7 +70,8 @@ export class CleanUpUrl extends Action<CompContext> {
 }
 
 export class DownloadVideo extends Action<CompContext & NotificationsOutput> {
-  async execute({ url, destDir, cookiesPath, userId, destFileName, terr, tlog }: CompContext & QueueContext & { destDir: string }): Promise<void> {
+  async execute(context: CompContext & QueueContext & { destDir: string }): Promise<void> {
+    const { url, destDir, cookiesPath, userId, destFileName, tlog } = context;
     if (!destDir) throw Error('No destDir specified');
 
     const userHomeDir = path.join(destDir, destDir == homeDir ? String(userId) : '');
@@ -85,20 +86,14 @@ export class DownloadVideo extends Action<CompContext & NotificationsOutput> {
       .add(url)
       .toString();
 
-    try {
-      await exec(command);
-      tlog('Video downloaded');
-    } catch (stderr: unknown) {
-      if (typeof stderr === 'string') {
-        const error = parseYtDlpError(stderr);
-        terr(new Error(error));
-      } else {
-        terr(stderr as Error);
-      }
+    await exec(command);
+    tlog('Video downloaded');
+  }
 
-      tlog('Failed to download video');
-      throw stderr
-    }
+  async onError(error: Error, context: QueueContext): Promise<void> {
+    const parsed = parseYtDlpError(error.message);
+    await (context as unknown as Partial<CompContext>).tlog?.('Failed to download video');
+    await super.onError(new Error(parsed), context);
   }
 }
 
@@ -147,7 +142,8 @@ export class FindFile extends Action<CompContext> {
 }
 
 export class ConvertVideo extends Action<LastFileContext & CompContext> {
-  async execute({ lastFile, url, terr, tlog }: LastFileContext & CompContext & QueueContext): Promise<void> {
+  async execute(context: LastFileContext & CompContext & QueueContext): Promise<void> {
+    const { lastFile, url, tlog } = context;
     const fileData = path.parse(lastFile);
     const newFileName = `${fileData.name}.new`;
     const newFilePath = path.join(fileData.dir, `${newFileName}.mp4`);
@@ -161,24 +157,19 @@ export class ConvertVideo extends Action<LastFileContext & CompContext> {
       .add(newFilePath)
       .toString();
 
-    try {
-      await exec(command);
-      tlog('Video ready for uploading');
-    } catch (stderr: unknown) {
-      if (typeof stderr === 'string') {
-        terr('Failed to convert video ' + url);
-      } else {
-        terr(stderr as Error);
-      }
+    await exec(command);
+    tlog('Video ready for uploading');
+  }
 
-      tlog('Failed to download video');
-      throw stderr
-    }
+  async onError(error: Error, context: QueueContext): Promise<void> {
+    await (context as unknown as Partial<CompContext>).tlog?.('Failed to download video');
+    await super.onError(error, context);
   }
 }
 
 export class ExtractVideoDimentions extends Action<CompContext & LastFileContext> {
-  async execute({ lastFile, extend, terr, tlog }: LastFileContext & CompContext & QueueContext): Promise<void> {
+  async execute(context: LastFileContext & CompContext & QueueContext): Promise<void> {
+    const { lastFile, extend, tlog } = context;
     // command
     // ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1 .\YKUNMpHk_cs.mp4
     //
@@ -187,29 +178,25 @@ export class ExtractVideoDimentions extends Action<CompContext & LastFileContext
     // height=1280
     const command = `ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1 ${lastFile}`
 
-    try {
-      const stdout = await exec(command);
-      const { width, height } = stdout
-        .trim()
-        .split('\n').map(s => s.trim())
-        .map((str: string): string[] => str.split('=').map(s => s.trim()))
-        .reduce<VideoDimensions>((obj: VideoDimensions, pair: string[]): VideoDimensions => {
-          const field = pair[0] as 'width' | 'height';
-          const value = Number(pair[1]);
-          obj[field] = value;
+    const stdout = await exec(command);
+    const { width, height } = stdout
+      .trim()
+      .split('\n').map(s => s.trim())
+      .map((str: string): string[] => str.split('=').map(s => s.trim()))
+      .reduce<VideoDimensions>((obj: VideoDimensions, pair: string[]): VideoDimensions => {
+        const field = pair[0] as 'width' | 'height';
+        const value = Number(pair[1]);
+        obj[field] = value;
 
-          return obj;
-        }, {} as VideoDimensions);
+        return obj;
+      }, {} as VideoDimensions);
 
-      extend({ width, height });
-    } catch (e: unknown) {
-      if (typeof e === 'string') {
-        tlog('Failed to extract video dimensions');
-        terr(e);
-      } else {
-        terr(e as Error);
-      }
-    }
+    extend({ width, height });
+  }
+
+  async onError(error: Error, context: QueueContext): Promise<void> {
+    await (context as unknown as Partial<CompContext>).tlog?.('Failed to extract video dimensions');
+    await super.onError(error, context);
   }
 }
 
@@ -220,17 +207,16 @@ export class DeleteFile extends Action<LastFileContext> {
 }
 
 export class UploadVideo extends Action<CompContext & VideoDimensionsContext & LastFileContext> {
-  async execute({ lastFile, bot, width, height, channelId, terr, tlog }: VideoDimensionsContext & CompContext & LastFileContext & QueueContext): Promise<void> {
+  async execute(context: VideoDimensionsContext & CompContext & LastFileContext & QueueContext): Promise<void> {
+    const { lastFile, bot, width, height, channelId, tlog } = context;
     const inputFile = new InputFile(lastFile);
 
-    try {
-      await bot.api.sendVideo(channelId!, inputFile, { width, height });
-    } catch (e) {
-      terr(e as Error);
-      tlog('Failed to upload video to telegram');
+    await bot.api.sendVideo(channelId!, inputFile, { width, height });
+  }
 
-      throw e;
-    }
+  async onError(error: Error, context: QueueContext): Promise<void> {
+    await (context as unknown as Partial<CompContext>).tlog?.('Failed to upload video to telegram');
+    await super.onError(error, context);
   }
 }
 

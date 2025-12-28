@@ -1,6 +1,6 @@
 import { LoggerOutput, NotificationsOutput, VideoDimensions } from '@libs/actions';
 import { exec, prepare } from '@libs/command';
-import { Action, QueueContext } from 'async-queue-runner';
+import { Action, QueueContext } from '@libs/actions';
 import del from 'del';
 import path from 'path';
 import { cameraCorridorUrl, swapDir } from './config.js';
