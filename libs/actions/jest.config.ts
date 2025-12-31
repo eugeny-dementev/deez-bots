@@ -1,5 +1,5 @@
 /* eslint-disable */
-export default {
+module.exports = {
   displayName: 'actions',
   preset: '../../jest.preset.js',
   testEnvironment: 'node',

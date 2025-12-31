@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   displayName: 'assert',
   preset: '../../jest.preset.js',
   testEnvironment: 'node',
