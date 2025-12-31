@@ -386,6 +386,7 @@ export class RemoveOldTorrentItem extends Action<CompContext & { torrentName: st
       context.logger.error(new Error(`No torrent found for the name`), {
         torrentName,
       });
+      return;
     }
 
     if (currentNameTorrents.length === 1) {

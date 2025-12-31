@@ -1,5 +1,4 @@
 import { Action, QueueContext } from '@libs/actions';
-import del from 'del';
 import expendTilda from 'expand-tilde';
 import fsPromises from 'fs/promises';
 import { glob } from 'glob';
@@ -18,6 +17,11 @@ import {
   VideoDimensionsContext,
 } from './types.js';
 import { InputFile } from 'grammy';
+
+const deleteFile = async (filePath: string): Promise<void> => {
+  const { deleteAsync } = await import('del');
+  await deleteAsync(filePath, { force: true });
+};
 
 export class Notification<C> extends Action<BotContext> {
   message: string | FContextMessage<C & BotContext>;
@@ -221,7 +225,7 @@ export class ExecuteCommand extends Action<CommandContext> {
 
 export class DeleteLastFile extends Action<LastFileContext> {
   async execute({ lastFile }: LastFileContext): Promise<void> {
-    await del(lastFile, { force: true });
+    await deleteFile(lastFile);
   }
 }
 

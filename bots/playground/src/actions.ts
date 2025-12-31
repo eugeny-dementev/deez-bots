@@ -1,7 +1,6 @@
 import { LoggerOutput, NotificationsOutput, parseYtDlpError } from '@libs/actions';
 import { exec, prepare } from '@libs/command';
 import { Action, QueueContext } from '@libs/actions';
-import del from 'del';
 import expendTilda from 'expand-tilde';
 import { glob } from 'glob';
 import path from 'path';
@@ -17,6 +16,11 @@ import {
 import { InputFile } from 'grammy';
 
 type CompContext = BotContext & NotificationsOutput & LoggerOutput;
+
+const deleteFile = async (filePath: string): Promise<void> => {
+  const { deleteAsync } = await import('del');
+  await deleteAsync(filePath, { force: true });
+};
 
 export class CalcTimeLeft extends Action<CompContext> {
   async execute(context: CompContext & QueueContext): Promise<void> {
@@ -202,7 +206,7 @@ export class ExtractVideoDimentions extends Action<CompContext & LastFileContext
 
 export class DeleteFile extends Action<LastFileContext> {
   async execute({ lastFile }: LastFileContext): Promise<void> {
-    await del(lastFile, { force: true });
+    await deleteFile(lastFile);
   }
 }
 

@@ -1,6 +1,5 @@
 import { ILogger } from '@libs/actions';
 import { assert } from '@libs/assert';
-import { FSWatcher, watch } from 'chokidar';
 import expandTilde from 'expand-tilde';
 import crypto from 'node:crypto';
 import EventEmitter from 'node:events';
@@ -25,7 +24,7 @@ export type TrackingConfig = {
 export class ConfigWatcher extends EventEmitter {
   private hashes = new Map<string, string>();
 
-  private fileWatcher: FSWatcher
+  private fileWatcher?: { on: (event: string, listener: (...args: unknown[]) => void) => void }
 
   constructor(private readonly logger: ILogger) {
     super()
@@ -33,6 +32,12 @@ export class ConfigWatcher extends EventEmitter {
     this.logger.info('Start watching tracking.json config', {
       fullTrackingPath,
     });
+
+    void this.startWatcher();
+  }
+
+  private async startWatcher(): Promise<void> {
+    const { watch } = await import('chokidar');
 
     this.fileWatcher = watch(fullTrackingPath, {
       usePolling: true, // had to use polling because config file is mounted to docker container and "inotify" events are not triggered

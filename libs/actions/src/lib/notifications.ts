@@ -6,6 +6,7 @@ export type NotificationsContext = {
   bot: Bot
   chatId: number
   adminId: number
+  cleanStack?: (stack: string, options?: { pretty?: boolean; basePath?: string }) => string
 }
 
 export type NotificationsOutput = {
@@ -80,8 +81,8 @@ export class InjectNotifications extends Action<NotificationsContext> {
       if (typeof msg === 'string') {
         await t.sendMessage(context.adminId, msg);
       } else if(msg instanceof Error) {
-        const cleanStack = await import('clean-stack');
-        const stack = cleanStack.default(msg.stack!, { pretty: true, basePath: process.cwd() });
+        const cleanStack = context.cleanStack ?? (await import('clean-stack')).default;
+        const stack = cleanStack(msg.stack!, { pretty: true, basePath: process.cwd() });
         await t.sendMessage(context.adminId, '```\n' + stack + '\n```', { parse_mode: 'MarkdownV2' });
       } else {
         await t.sendMessage(context.adminId, `Unrecognized error: ${typeof msg}`);

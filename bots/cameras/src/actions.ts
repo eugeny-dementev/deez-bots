@@ -1,7 +1,6 @@
 import { LoggerOutput, NotificationsOutput, VideoDimensions } from '@libs/actions';
 import { exec, prepare } from '@libs/command';
 import { Action, QueueContext } from '@libs/actions';
-import del from 'del';
 import path from 'path';
 import { cameraCorridorUrl, swapDir } from './config.js';
 import {
@@ -11,6 +10,11 @@ import {
 import { InputFile } from 'grammy';
 
 export type DevContext = LoggerOutput & NotificationsOutput;
+
+const deleteFile = async (filePath: string): Promise<void> => {
+  const { deleteAsync } = await import('del');
+  await deleteAsync(filePath, { force: true });
+};
 
 export type RoomContext = { room: string };
 export class PrepareFilePath extends Action<RoomContext & DevContext> {
@@ -48,7 +52,7 @@ export class RecordRoom extends Action<FileContext & DevContext> {
 
 export class DeleteFile extends Action<FileContext> {
   async execute({ filePath }: FileContext): Promise<void> {
-    await del(filePath, { force: true });
+    await deleteFile(filePath);
   }
 }
 

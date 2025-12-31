@@ -1,7 +1,6 @@
 import { LoggerOutput, NotificationsOutput } from '@libs/actions';
 import { exec, prepare } from '@libs/command';
 import { Action, QueueContext } from '@libs/actions';
-import del from 'del';
 import expendTilda from 'expand-tilde';
 import { glob } from 'glob';
 import { InputFile } from 'grammy';
@@ -26,6 +25,11 @@ export class CleanUpUrl extends Action<BotContext> {
 }
 
 type CompContext = BotContext & LoggerOutput & NotificationsOutput;
+
+const deleteFile = async (filePath: string): Promise<void> => {
+  const { deleteAsync } = await import('del');
+  await deleteAsync(filePath, { force: true });
+};
 
 export class PrepareYtDlpMaxRes extends Action<VideoMetaContext & CompContext> {
   async execute(context: VideoMetaContext & CompContext & QueueContext): Promise<void> {
@@ -133,7 +137,7 @@ export class ConvertVideo extends Action<LastFileContext & CompContext> {
     tadd('Converting video for uploading');
 
     await exec(command);
-    await del(lastFile, { force: true });
+    await deleteFile(lastFile);
     extend({ lastFile: newFilePath });
 
     tlog('Video ready for uploading');
@@ -180,7 +184,7 @@ export class ExtractVideoDimensions extends Action<CompContext & LastFileContext
 
 export class DeleteFile extends Action<LastFileContext> {
   async execute({ lastFile }: LastFileContext): Promise<void> {
-    await del(lastFile, { force: true });
+    await deleteFile(lastFile);
   }
 }
 
