@@ -25,7 +25,7 @@ const watcher = new ConfigWatcher(logger);
 const scheduler = new Scheduler(logger, watcher);
 
 bot.command('start', (ctx) => ctx.reply('Welcome to Sverdlova'));
-bot.command('help', (ctx) => ctx.reply('Send me a torrent with mkv files'));
+bot.command('help', (ctx) => ctx.reply('Send me a torrent with mkv files or flat mp4 files'));
 bot.command('get', async (ctx) => {
   const match = typeof ctx.match === 'string' ? ctx.match.trim() : '';
   const index = Number(match);
@@ -83,7 +83,7 @@ bot.on('message:document', async (ctx) => {
   }
 
   if (doc.mime_type !== 'application/x-bittorrent') {
-    ctx.reply('Unsupported file type, only torrent files with single *.mkv file supported');
+    ctx.reply('Unsupported file type, only torrent files with mkv or flat mp4 files supported');
 
     return;
   }
