@@ -54,6 +54,11 @@ type WikidataSearchResult = {
   id?: string;
 };
 
+const WIKIDATA_HEADERS = {
+  'Accept': 'application/json',
+  'User-Agent': 'deez-bots/1.0 (local)',
+};
+
 async function resolveParseTorrent(context: unknown): Promise<ParseTorrentFn> {
   const maybeContext = context as { parseTorrent?: ParseTorrentFn } | null;
   if (typeof maybeContext?.parseTorrent === 'function') {
@@ -75,25 +80,139 @@ function normalizeLanguage(language?: string): string {
   return base || 'en';
 }
 
-function extractTitleCandidates(rawTitle: string): { candidates: string[]; year?: string; suffix?: string } {
-  const yearMatch = rawTitle.match(/\b(19|20)\d{2}\b/);
-  const year = yearMatch?.[0];
+function findYear(text?: string): string | undefined {
+  if (!text) {
+    return undefined;
+  }
 
-  const suffixIndex = rawTitle.search(/[\[\(]/);
-  const suffix = suffixIndex >= 0 ? rawTitle.slice(suffixIndex).trim() : undefined;
-  const titlePart = suffixIndex >= 0 ? rawTitle.slice(0, suffixIndex) : rawTitle;
+  const match = text.match(/\b(19|20)\d{2}\b/);
+  return match?.[0];
+}
 
-  const cleaned = titlePart
-    .replace(/\b(19|20)\d{2}\b/g, ' ')
-    .replace(/\s+/g, ' ')
+function splitTitleAndSuffix(rawTitle: string): { base: string; suffix?: string } {
+  const bracketIndex = rawTitle.indexOf('[');
+  if (bracketIndex === -1) {
+    return { base: rawTitle.trim() };
+  }
+
+  return {
+    base: rawTitle.slice(0, bracketIndex).trim(),
+    suffix: rawTitle.slice(bracketIndex).trim(),
+  };
+}
+
+function extractSeriesSuffix(base: string): { base: string; seriesSuffix?: string } {
+  const seriesPattern = /(?:^|[\\/|])\s*(S\d{1,2}E\d{1,2}(?:-\d{1,2})?(?:\s*of\s*\d{1,2})?|S\d{1,2}E\d{1,2}(?:-\d{1,2})?|E\d{1,2}\s*of\s*\d{1,2}|S\d{1,2})\s*$/i;
+  const match = base.match(seriesPattern);
+  if (!match || match.index === undefined) {
+    return { base };
+  }
+
+  const seriesSuffix = match[1].trim();
+  const trimmedBase = base
+    .slice(0, match.index)
+    .replace(/[\/|:-]+$/g, '')
     .trim();
 
-  const candidates = cleaned
-    .split(/\s*\/\s*|\s*\|\s*|\s*;\s*/)
-    .map((value) => value.replace(/^[\s\-:]+|[\s\-:]+$/g, '').trim())
-    .filter((value) => value.length > 1);
+  return { base: trimmedBase, seriesSuffix };
+}
 
-  const uniqueCandidates = Array.from(new Set(candidates));
+function normalizeTitleSegment(segment: string): { title: string; seasonSuffix?: string } {
+  let value = segment.replace(/\s+/g, ' ').trim();
+  if (!value) {
+    return { title: '' };
+  }
+
+  value = value.replace(/^[^\p{L}\p{N}]+/gu, '').replace(/[^\p{L}\p{N}]+$/gu, '').trim();
+  if (!value) {
+    return { title: '' };
+  }
+
+  const seasonMatch = value.match(/\b(?:S\d{1,2}|Season\s*\d{1,2}|\d{1,2}(?:st|nd|rd|th)\s*Season)\b$/i);
+  let seasonSuffix: string | undefined;
+  if (seasonMatch && seasonMatch.index !== undefined) {
+    seasonSuffix = seasonMatch[0];
+    value = value.slice(0, seasonMatch.index).trim();
+  }
+
+  value = value.replace(/^[\(\[]+|[\)\]]+$/g, '').trim();
+
+  return { title: value, seasonSuffix };
+}
+
+function isMeaningfulTitle(title: string): boolean {
+  if (!title) {
+    return false;
+  }
+
+  if (!/\p{L}/u.test(title)) {
+    return false;
+  }
+
+  if (title.length < 2) {
+    return false;
+  }
+
+  if (title.length <= 3 && title.toUpperCase() === title) {
+    return false;
+  }
+
+  return true;
+}
+
+function extractTitleCandidates(rawTitle: string): { candidates: string[]; year?: string; suffix?: string } {
+  const { base, suffix: metaSuffix } = splitTitleAndSuffix(rawTitle);
+  const { base: baseWithoutSeries, seriesSuffix } = extractSeriesSuffix(base);
+
+  const rawSegments = baseWithoutSeries.split(/\s*[\/|]\s*/);
+  const seasonSuffixes: string[] = [];
+  const seasonSuffixKeys = new Set<string>();
+  const candidates: string[] = [];
+
+  for (const segment of rawSegments) {
+    const normalized = normalizeTitleSegment(segment);
+    if (normalized.seasonSuffix) {
+      const key = normalized.seasonSuffix.replace(/[^0-9]/g, '') || normalized.seasonSuffix.toLowerCase();
+      if (!seasonSuffixKeys.has(key)) {
+        seasonSuffixKeys.add(key);
+        seasonSuffixes.push(normalized.seasonSuffix);
+      }
+    }
+
+    const cleaned = normalized.title
+      .replace(/\b(19|20)\d{2}\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!isMeaningfulTitle(cleaned)) {
+      continue;
+    }
+
+    candidates.push(cleaned);
+  }
+
+  const seen = new Set<string>();
+  const uniqueCandidates = candidates.filter((candidate) => {
+    const key = candidate.toLowerCase();
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+
+  if (uniqueCandidates.length === 0 && isMeaningfulTitle(baseWithoutSeries)) {
+    uniqueCandidates.push(baseWithoutSeries.trim());
+  }
+
+  const year = findYear(metaSuffix) ?? findYear(baseWithoutSeries) ?? findYear(rawTitle);
+
+  const suffixParts = [
+    seriesSuffix,
+    ...seasonSuffixes,
+    metaSuffix,
+  ].filter(Boolean) as string[];
+  const suffix = suffixParts.join(' ').replace(/\s+/g, ' ').trim() || undefined;
 
   return { candidates: uniqueCandidates, year, suffix };
 }
@@ -107,7 +226,7 @@ async function searchWikidataEntity(search: string, language: string): Promise<s
   url.searchParams.set('limit', '1');
   url.searchParams.set('type', 'item');
 
-  const response = await fetch(url);
+  const response = await fetch(url, { headers: WIKIDATA_HEADERS });
   if (!response.ok) {
     return null;
   }
@@ -126,7 +245,7 @@ async function getWikidataLabel(entityId: string, language: string): Promise<str
   url.searchParams.set('languages', `${language}|en`);
   url.searchParams.set('format', 'json');
 
-  const response = await fetch(url);
+  const response = await fetch(url, { headers: WIKIDATA_HEADERS });
   if (!response.ok) {
     return null;
   }
@@ -169,11 +288,90 @@ async function resolveWikidataTitle(
   return null;
 }
 
+function isVideoResult(result: JacketResponseItem): boolean {
+  const category = result.CategoryDesc?.toLowerCase() ?? '';
+  if (category) {
+    return category.includes('movie') || category.includes('tv') || category.includes('anime');
+  }
+
+  const title = result.Title;
+  if (/\[(movie|tv|anime)\]/i.test(title)) {
+    return true;
+  }
+
+  return /\bS\d{1,2}E\d{1,2}\b/i.test(title);
+}
+
+function scoreCandidateTitle(candidate: string): number {
+  const normalized = candidate.trim();
+  const lower = normalized.toLowerCase();
+  const words = lower.split(/\s+/).filter(Boolean);
+  const englishMarkers = ['the', 'of', 'and', 'in', 'to', 'for', 'with', 'without', 'between', 'vs', 'a', 'an'];
+  let score = 0;
+
+  if (words.some((word) => englishMarkers.includes(word))) {
+    score += 3;
+  }
+
+  if (normalized.includes(':')) {
+    score += 2;
+  }
+
+  if (normalized.includes('?')) {
+    score += 1;
+  }
+
+  if (words.length >= 2) {
+    score += 1;
+  }
+
+  if (words.length >= 3) {
+    score += 1;
+  }
+
+  if (/^[A-Z0-9]+$/.test(normalized)) {
+    score -= 2;
+  }
+
+  if (!normalized.includes(' ') && normalized.length <= 8) {
+    score -= 1;
+  }
+
+  if (/[^A-Za-z0-9\s:'-]/.test(normalized)) {
+    score -= 1;
+  }
+
+  return score;
+}
+
+function pickFallbackTitle(candidates: string[]): string | null {
+  if (!candidates.length) {
+    return null;
+  }
+
+  const sorted = [...candidates].sort((a, b) => {
+    const scoreDiff = scoreCandidateTitle(b) - scoreCandidateTitle(a);
+    if (scoreDiff !== 0) {
+      return scoreDiff;
+    }
+
+    const wordDiff = b.split(/\s+/).length - a.split(/\s+/).length;
+    if (wordDiff !== 0) {
+      return wordDiff;
+    }
+
+    return b.length - a.length;
+  });
+
+  return sorted[0] ?? null;
+}
+
 function buildLocalizedTitle(label: string, year: string | undefined, suffix?: string): string {
   let title = label.trim();
   const hasYearInSuffix = Boolean(year && suffix?.includes(year));
+  const hasYearInTitle = Boolean(year && title.includes(year));
 
-  if (year && !hasYearInSuffix) {
+  if (year && !hasYearInSuffix && !hasYearInTitle) {
     title = `${title} (${year})`;
   }
 
@@ -736,6 +934,11 @@ export class UpdateSearchResultTitles extends Action<SearchQueryContext & Search
     const updatedResults: JacketResponseItem[] = [];
 
     for (const result of results) {
+      if (!isVideoResult(result)) {
+        updatedResults.push(result);
+        continue;
+      }
+
       const { candidates, year, suffix } = extractTitleCandidates(result.Title);
       if (!candidates.length) {
         updatedResults.push(result);
@@ -744,14 +947,15 @@ export class UpdateSearchResultTitles extends Action<SearchQueryContext & Search
 
       try {
         const label = await resolveWikidataTitle(candidates, year, language);
-        if (!label) {
+        const resolved = label ?? pickFallbackTitle(candidates);
+        if (!resolved) {
           updatedResults.push(result);
           continue;
         }
 
         updatedResults.push({
           ...result,
-          Title: buildLocalizedTitle(label, year, suffix),
+          Title: buildLocalizedTitle(resolved, year, suffix),
         });
       } catch (error) {
         context.logger.warn('Wikidata lookup failed', {

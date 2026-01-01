@@ -648,14 +648,26 @@ describe('torrents actions', () => {
       }));
 
     const context = createContext({
-      results: [{ Guid: 'g1', Link: 'l1', PublishDate: 'd1', Title: 'The Legend of Hei (2019)' }],
+      results: [{
+        Guid: 'g1',
+        Link: 'l1',
+        PublishDate: 'd1',
+        Title: 'The Legend of Hei (2019) [Movie]',
+        CategoryDesc: 'Movies/Foreign',
+      }],
       language: 'ru',
     });
 
     await new UpdateSearchResultTitles().execute(context as any);
 
     expect(context.extend).toHaveBeenCalledWith({
-      results: [{ Guid: 'g1', Link: 'l1', PublishDate: 'd1', Title: 'Legenda Hei (2019)' }],
+      results: [{
+        Guid: 'g1',
+        Link: 'l1',
+        PublishDate: 'd1',
+        Title: 'Legenda Hei (2019) [Movie]',
+        CategoryDesc: 'Movies/Foreign',
+      }],
     });
   });
 
@@ -674,6 +686,179 @@ describe('torrents actions', () => {
 
     expect(context.extend).toHaveBeenCalledWith({
       results: [{ Guid: 'g1', Link: 'l1', PublishDate: 'd1', Title: 'Unknown Movie 2024' }],
+    });
+  });
+
+  const createWikidataFetchMock = (label: string) => jest.fn((input: unknown) => {
+    const url = String(input);
+    if (url.includes('wbsearchentities')) {
+      return Promise.resolve(mockFetchResponse({
+        json: jest.fn().mockResolvedValue({ search: [{ id: 'Q1' }] }),
+      }));
+    }
+    if (url.includes('wbgetentities')) {
+      return Promise.resolve(mockFetchResponse({
+        json: jest.fn().mockResolvedValue({
+          entities: {
+            Q1: { labels: { en: { value: label } } },
+          },
+        }),
+      }));
+    }
+    return Promise.resolve(mockFetchResponse());
+  });
+
+  const createWikidataEmptyMock = () => jest.fn((input: unknown) => {
+    const url = String(input);
+    if (url.includes('wbsearchentities')) {
+      return Promise.resolve(mockFetchResponse({
+        json: jest.fn().mockResolvedValue({ search: [] }),
+      }));
+    }
+    return Promise.resolve(mockFetchResponse());
+  });
+
+  const wikidataTitleCases = [
+    {
+      name: 'hei aliases with series suffix',
+      title: 'Hei men / Black Gate / SWARM / S1E1-12 of 12 [2022, WEB-DL 1080p] [MVO|AniStar]',
+      expected: 'Black Gate Localized S1E1-12 of 12 [2022, WEB-DL 1080p] [MVO|AniStar]',
+      label: 'Black Gate Localized',
+      category: 'TV',
+    },
+    {
+      name: 'matrix movie',
+      title: 'The Matrix [1999, WEB-DL-AVC] [Open Matte] MVO (Jaskier)',
+      expected: 'The Matrix [1999, WEB-DL-AVC] [Open Matte] MVO (Jaskier)',
+      label: 'The Matrix',
+      category: 'Movies/Foreign',
+    },
+    {
+      name: 'pluribus series suffix',
+      title: 'Pluribus / S1E1-9 of 9 [2025, HEVC, SDR, WEB-DL 2160p] MVO (NewComers)',
+      expected: 'Pluribus Localized S1E1-9 of 9 [2025, HEVC, SDR, WEB-DL 2160p] MVO (NewComers)',
+      label: 'Pluribus Localized',
+      category: 'TV',
+    },
+    {
+      name: 'rurouni kenshin aliases',
+      title: '(S2, 2) / Rurouni Kenshin: Meiji Kenkaku Romantan - Kyoto Douran / Rurouni Kenshin: Kyoto Disturbance [TV] [E23 of 23] [2024, WEBRip] [HWP]',
+      expected: 'Rurouni Kenshin: Kyoto Disturbance [TV] [E23 of 23] [2024, WEBRip] [HWP]',
+      label: 'Rurouni Kenshin: Kyoto Disturbance',
+      category: 'TV',
+    },
+    {
+      name: 'mr robot episode range',
+      title: 'Mr. Robot / S4E1-13 of 13 [2019, BDRip-AVC] DVO + Original Eng + Sub (Rus, Ukr, Eng)',
+      expected: 'Mr. Robot S4E1-13 of 13 [2019, BDRip-AVC] DVO + Original Eng + Sub (Rus, Ukr, Eng)',
+      label: 'Mr. Robot',
+      category: 'TV',
+    },
+    {
+      name: 'kaguya-sama movie alias',
+      title: 'Kaguya-sama wa Kokurasetai: First Kiss wa Owaranai / Kaguya-sama: Love Is War: The First Kiss That Never Ends [Movie] [E4 of 4] [2022, BDRemux] [1080p]',
+      expected: 'Kaguya-sama: Love Is War: The First Kiss That Never Ends [Movie] [E4 of 4] [2022, BDRemux] [1080p]',
+      label: 'Kaguya-sama: Love Is War: The First Kiss That Never Ends',
+      category: 'Movies/Other',
+    },
+    {
+      name: 'kaguya-sama tv alias with prefix',
+      title: '(-1) | Kaguya-sama wa Kokurasetai: Tensai-tachi no Renai Zunousen | Kaguya-sama: Love is War [TV] [1-12  12] [2019] [BDRip] [1080]',
+      expected: 'Kaguya-sama: Love is War [TV] [1-12 12] [2019] [BDRip] [1080]',
+      label: 'Kaguya-sama: Love is War',
+      category: 'TV/Anime',
+    },
+    {
+      name: 'danmachi season suffix',
+      title: '(S5) / Dungeon ni Deai o Motomeru no wa Machigatte Iru Darouka: Familia Myth V Houjou no Megami Hen / Is It Wrong to Try to Pick Up Girls in a Dungeon? 5th Season / DanMachi S5 [TV] [E15 of 15] [2024, BDRip] [1080p]',
+      expected: 'DanMachi S5 [TV] [E15 of 15] [2024, BDRip] [1080p]',
+      label: 'DanMachi',
+      category: 'TV/Anime',
+    },
+  ];
+
+  for (const testCase of wikidataTitleCases) {
+    it(`UpdateSearchResultTitles formats ${testCase.name}`, async () => {
+      (globalThis as any).fetch = createWikidataFetchMock(testCase.label);
+
+      const context = createContext({
+        results: [{
+          Guid: 'g1',
+          Link: 'l1',
+          PublishDate: 'd1',
+          Title: testCase.title,
+          CategoryDesc: testCase.category,
+        }],
+        language: 'en',
+      });
+
+      await new UpdateSearchResultTitles().execute(context as any);
+
+      expect(context.extend).toHaveBeenCalledWith({
+        results: [{
+          Guid: 'g1',
+          Link: 'l1',
+          PublishDate: 'd1',
+          Title: testCase.expected,
+          CategoryDesc: testCase.category,
+        }],
+      });
+    });
+  }
+
+  it('UpdateSearchResultTitles falls back when Wikidata has no match', async () => {
+    (globalThis as any).fetch = createWikidataEmptyMock();
+
+    const context = createContext({
+      results: [{
+        Guid: 'g1',
+        Link: 'l1',
+        PublishDate: 'd1',
+        Title: 'Double Track Puzzle / Black and White Bureau / Hei Bai Ju / S1E1-20 of 20 [2025, HEVC, WEB-DL 2160p] DVO (DubLikTV) + Original + Sub (Chi)',
+        CategoryDesc: 'TV/Foreign',
+      }],
+      language: 'en',
+    });
+
+    await new UpdateSearchResultTitles().execute(context as any);
+
+    expect(context.extend).toHaveBeenCalledWith({
+      results: [{
+        Guid: 'g1',
+        Link: 'l1',
+        PublishDate: 'd1',
+        Title: 'Black and White Bureau S1E1-20 of 20 [2025, HEVC, WEB-DL 2160p] DVO (DubLikTV) + Original + Sub (Chi)',
+        CategoryDesc: 'TV/Foreign',
+      }],
+    });
+  });
+
+  it('UpdateSearchResultTitles skips non-video categories', async () => {
+    const fetchMock = getFetchMock();
+    fetchMock.mockResolvedValue(mockFetchResponse());
+
+    const context = createContext({
+      results: [{
+        Guid: 'g1',
+        Link: 'l1',
+        PublishDate: 'd1',
+        Title: "[TR24][OF] 2 Red Jokers - Hei Hei Birdie - 2025 (Jazz)",
+        CategoryDesc: 'Audio',
+      }],
+      language: 'en',
+    });
+
+    await new UpdateSearchResultTitles().execute(context as any);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(context.extend).toHaveBeenCalledWith({
+      results: [{
+        Guid: 'g1',
+        Link: 'l1',
+        PublishDate: 'd1',
+        Title: "[TR24][OF] 2 Red Jokers - Hei Hei Birdie - 2025 (Jazz)",
+        CategoryDesc: 'Audio',
+      }],
     });
   });
 
