@@ -1,10 +1,5 @@
-import { BrowserContext as Browser, BrowserType, Page } from "playwright";
 import { Logger } from "./logger.js";
 import { Bot } from "grammy";
-
-export type PlaywrightContext = {
-  chromium: BrowserType,
-}
 
 type BLogger = {
   info: (msg: string) => void,
@@ -21,14 +16,7 @@ export type BotContext = {
   chatId: number,
 }
 
-export type BrowserContext = {
-  browser: Browser,
-  page: Page,
-};
-
-export type QBitTorrentContext = DestContext & {
-  torrentFilePath: string,
-};
+export type QBitTorrentContext = DestContext;
 
 export type TFile = {
   name: string,

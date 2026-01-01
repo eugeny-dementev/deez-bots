@@ -10,10 +10,7 @@ import { finished } from 'node:stream/promises';
 import { ReadableStream } from 'node:stream/web';
 import { FileX } from 'node_modules/@grammyjs/files/out/files.js';
 import * as path from "path";
-import { chromium } from 'playwright';
 import { promisify } from 'util';
-// @ts-ignore
-import parseTorrent from "parse-torrent";
 import {
   downloadsDir,
   jackettHost,
@@ -26,11 +23,9 @@ import {
 } from './config.js';
 import { DB } from './db.js';
 import {
-  closeBrowser,
   fileExists,
   getDirMaps,
   omit,
-  openBrowser,
   russianLetters,
   russianToEnglish,
   sleep,
@@ -52,6 +47,19 @@ export type FileContext = {
   file: FileX,
   fileName: string,
 };
+
+type ParseTorrentFn = (data: Buffer) => Torrent;
+
+async function resolveParseTorrent(context: unknown): Promise<ParseTorrentFn> {
+  const maybeContext = context as { parseTorrent?: ParseTorrentFn } | null;
+  if (typeof maybeContext?.parseTorrent === 'function') {
+    return maybeContext.parseTorrent;
+  }
+
+  const mod = await import('parse-torrent');
+  const parser = (mod as { default?: unknown }).default ?? mod;
+  return parser as unknown as ParseTorrentFn;
+}
 export class RenameFile extends Action<CompContext & FileContext> {
   async execute(context: BotContext & LoggerOutput & NotificationsOutput & FileContext & QueueContext): Promise<void> {
     const { fileName, extend, logger } = context;
@@ -106,57 +114,74 @@ export class DownloadFile extends Action<CompContext & FileContext> {
 
 export class AddUploadToQBitTorrent extends lockingClassFactory<CompContext & QBitTorrentContext>('browser') {
   async execute(context: CompContext & QBitTorrentContext & QueueContext) {
-    const { qdir, filePath, tlog } = context;
+    const { qdir, fdir, filePath, tlog } = context;
 
-    const { page, browser } = await openBrowser(chromium);
+    const torrentBuffer = await readFile(path.resolve(filePath));
+    const form = new FormData();
+    form.set('torrents', new Blob([torrentBuffer], { type: 'application/x-bittorrent' }), path.basename(filePath));
+    form.set('savepath', qdir);
 
-    await page.goto(qBitTorrentHost, {
-      waitUntil: 'networkidle',
+    const category = resolveCategory(qdir, fdir);
+    if (category) {
+      form.set('category', category);
+    }
+
+    context.logger.info('Submitting torrent through qBittorrent API', {
+      filePath,
+      qdir,
+      category,
     });
 
-    const vs = page.viewportSize() || { width: 200, height: 200 };
-    await page.mouse.move(vs.width, vs.height);
-    await page.locator('#uploadButton').click(); // default scope
+    const response = await fetch(`${qBitTorrentHost}/api/v2/torrents/add`, {
+      method: 'POST',
+      body: form,
+    });
 
-    context.logger.info('Clicked to add new download task');
-    context.logger.info(`${filePath} => ${qdir}`);
-
-    // popup is opened, but it exist in iFrame so need to switch scopes to it
-    const uploadPopupFrame = page.frameLocator('#uploadPage_iframe');
-
-    // search input[type=file] inside iframe locator
-    const chooseFileButton = uploadPopupFrame.locator('#uploadForm #fileselect');
-
-    // Start waiting for file chooser before clicking. Note no await.
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await chooseFileButton.click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles(filePath);
-
-    context.logger.info('file choosing ' + filePath);
-    // alternative way to set files to input[type=file]
-    // await chooseFileButton.setInputFiles([filePath]);
-    context.logger.info('torrent file set');
-
-    // Set destination path
-    await uploadPopupFrame.locator('#savepath').fill(qdir);
-    context.logger.info('destination set ' + qdir);
-
-    // submit downloading and wait for popup to close
-    await Promise.all([
-      uploadPopupFrame.locator('button[type="submit"]').click(),
-      page.waitForSelector('#uploadPage_iframe', { state: "detached" }),
-    ])
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`qBittorrent add failed: ${response.status} ${response.statusText} ${body}`);
+    }
 
     await tlog('Torrent file submitted');
-
-    await closeBrowser(browser);
   }
 
   async onError(error: Error, context: QueueContext): Promise<void> {
     await (context as unknown as Partial<CompContext>).tlog?.('Failed to add torrent to download');
     await super.onError(error, context);
   }
+}
+
+function resolveCategory(qdir: string, fdir?: string): string | undefined {
+  if (fdir === rawShowsDir || qdir === qRawShowsDir) {
+    return 'RAW TV Show';
+  }
+
+  if (fdir === tvshowsDir) {
+    return 'TV Show';
+  }
+
+  if (fdir === moviesDir) {
+    return 'Movie';
+  }
+
+  const normalized = qdir.toLowerCase();
+  if (normalized.includes('raw') && normalized.includes('movie')) {
+    return 'RAW Movie';
+  }
+
+  if (normalized.includes('raw') && (normalized.includes('tv') || normalized.includes('show'))) {
+    return 'RAW TV Show';
+  }
+
+  if (normalized.includes('tv') || normalized.includes('show')) {
+    return 'TV Show';
+  }
+
+  if (normalized.includes('movie')) {
+    return 'Movie';
+  }
+
+  return undefined;
 }
 
 export class CheckTorrentFile extends Action<CompContext & QBitTorrentContext> {
@@ -168,6 +193,7 @@ export class CheckTorrentFile extends Action<CompContext & QBitTorrentContext> {
     }
 
     const file = await readFile(path.resolve(filePath));
+    const parseTorrent = await resolveParseTorrent(context);
     const torrent = await parseTorrent(file) as Torrent;
 
     if (torrent?.['files']) {
@@ -204,6 +230,7 @@ export class ExtractTorrentPattern extends Action<CompContext & QBitTorrentConte
 
     context.logger.info('Parsing torrent file ' + filePath);
     const file = await readFile(path.resolve(filePath));
+    const parseTorrent = await resolveParseTorrent(context);
     const torrent = await parseTorrent(file) as Torrent;
 
     let torrentDirName = '';
@@ -357,6 +384,7 @@ export class ReadTorrentFile extends Action<CompContext & { torrentName: string 
     const { filePath, tadd } = context;
 
     const file = await readFile(path.resolve(filePath));
+    const parseTorrent = await resolveParseTorrent(context);
     const torrent = await parseTorrent(file) as Torrent;
     const torrentName = torrent.name;
 

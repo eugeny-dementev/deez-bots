@@ -111,7 +111,7 @@ export class Scheduler extends EventEmitter {
 
           this.emit('topic', topicConfig);
         } else {
-          this.logger.info('Time until next topic check', {
+          this.logger.verbose('Time until next topic check', {
             timeLeft: formatTimeLeft(timestamp),
             topic: topicConfig.query,
             guid,

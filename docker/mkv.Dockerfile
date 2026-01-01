@@ -1,10 +1,7 @@
 # syntax=docker/dockerfile:1
 
-FROM mcr.microsoft.com/playwright:v1.44.0-jammy
+FROM node:24-alpine
 
-RUN wget -O /usr/share/keyrings/gpg-pub-moritzbunkus.gpg https://mkvtoolnix.download/gpg-pub-moritzbunkus.gpg
-RUN echo "deb [signed-by=/usr/share/keyrings/gpg-pub-moritzbunkus.gpg] https://mkvtoolnix.download/ubuntu/ jammy main" | tee /etc/apt/sources.list.d/mkvtoolnix.list
-RUN apt update
-RUN apt install -y mkvtoolnix
+RUN apk add --no-cache mkvtoolnix
 
 # docker build -f ./docker/mkv.Dockerfile --tag utils/automatization .

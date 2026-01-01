@@ -73,9 +73,6 @@ jest.mock('parse-torrent', () => ({
   default: jest.fn(),
 }), { virtual: true });
 
-jest.mock('playwright', () => ({
-  chromium: {},
-}));
 
 jest.mock('./multi-track.js', () => ({
   __esModule: true,
@@ -101,8 +98,6 @@ jest.mock('glob', () => ({
 }));
 
 jest.mock('./helpers.js', () => ({
-  closeBrowser: jest.fn(),
-  openBrowser: jest.fn(),
   fileExists: jest.fn(),
   getDirMaps: jest.fn(),
   omit: jest.fn((obj: object) => obj),
@@ -211,29 +206,76 @@ describe('torrents actions', () => {
     expect(context.extend).toHaveBeenCalledWith({ filePath: path.join('/downloads', 'file.torrent') });
   });
 
-  it('AddUploadToQBitTorrent uploads torrent through UI', async () => {
-    const page = {
-      goto: jest.fn(),
-      viewportSize: jest.fn(() => ({ width: 100, height: 100 })),
-      mouse: { move: jest.fn() },
-      locator: jest.fn(() => ({ click: jest.fn() })),
-      frameLocator: jest.fn(() => ({
-        locator: jest.fn(() => ({ click: jest.fn(), fill: jest.fn() })),
-      })),
-      waitForEvent: jest.fn(() => Promise.resolve({ setFiles: jest.fn() })),
-      waitForSelector: jest.fn(),
-    };
-    const browser = {};
-    const helpers = jest.requireMock('./helpers.js') as { openBrowser: jest.Mock; closeBrowser: jest.Mock };
-    helpers.openBrowser.mockResolvedValue({ page, browser });
+  it('AddUploadToQBitTorrent uploads torrent through API with savepath and category', async () => {
+    const fetchMock = getFetchMock();
+    fetchMock.mockResolvedValueOnce(mockFetchResponse({ ok: true }));
 
-    const context = createContext({ qdir: '/qdir', filePath: '/downloads/file.torrent' });
+    const fs = jest.requireMock('fs') as { readFile: jest.Mock };
+    fs.readFile.mockImplementation((_path, cb) => cb(null, Buffer.from('torrent')));
+
+    const context = createContext({
+      qdir: '/qtv',
+      fdir: '/tv',
+      filePath: '/downloads/file.torrent',
+    });
 
     await new AddUploadToQBitTorrent().execute(context as any);
 
-    expect(helpers.openBrowser).toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith('http://qb/api/v2/torrents/add', expect.anything());
+    const request = fetchMock.mock.calls[0][1] as { body: unknown; method: string };
+    expect(request.method).toBe('POST');
+
+    const entries = Array.from((request.body as any).entries());
+    const savepathEntry = entries.find(([key]) => key === 'savepath');
+    const categoryEntry = entries.find(([key]) => key === 'category');
+
+    expect(savepathEntry?.[1]).toBe('/qtv');
+    expect(categoryEntry?.[1]).toBe('TV Show');
     expect(context.tlog).toHaveBeenCalledWith('Torrent file submitted');
-    expect(helpers.closeBrowser).toHaveBeenCalledWith(browser);
+  });
+
+  it('AddUploadToQBitTorrent sets raw tv show category', async () => {
+    const fetchMock = getFetchMock();
+    fetchMock.mockResolvedValueOnce(mockFetchResponse({ ok: true }));
+
+    const fs = jest.requireMock('fs') as { readFile: jest.Mock };
+    fs.readFile.mockImplementation((_path, cb) => cb(null, Buffer.from('torrent')));
+
+    const context = createContext({
+      qdir: '/qraw',
+      fdir: '/raw',
+      filePath: '/downloads/file.torrent',
+    });
+
+    await new AddUploadToQBitTorrent().execute(context as any);
+
+    const request = fetchMock.mock.calls[0][1] as { body: unknown };
+    const entries = Array.from((request.body as any).entries());
+    const categoryEntry = entries.find(([key]) => key === 'category');
+
+    expect(categoryEntry?.[1]).toBe('RAW TV Show');
+  });
+
+  it('AddUploadToQBitTorrent sets raw movie category when qdir matches', async () => {
+    const fetchMock = getFetchMock();
+    fetchMock.mockResolvedValueOnce(mockFetchResponse({ ok: true }));
+
+    const fs = jest.requireMock('fs') as { readFile: jest.Mock };
+    fs.readFile.mockImplementation((_path, cb) => cb(null, Buffer.from('torrent')));
+
+    const context = createContext({
+      qdir: '/raw-movies',
+      fdir: '/raw-movies',
+      filePath: '/downloads/file.torrent',
+    });
+
+    await new AddUploadToQBitTorrent().execute(context as any);
+
+    const request = fetchMock.mock.calls[0][1] as { body: unknown };
+    const entries = Array.from((request.body as any).entries());
+    const categoryEntry = entries.find(([key]) => key === 'category');
+
+    expect(categoryEntry?.[1]).toBe('RAW Movie');
   });
 
   it('AddUploadToQBitTorrent onError reports failure', async () => {
@@ -246,8 +288,8 @@ describe('torrents actions', () => {
   });
 
   it('CheckTorrentFile skips for multi-track', async () => {
-    const parseTorrent = (jest.requireMock('parse-torrent') as { default: jest.Mock }).default;
-    const context = createContext({ type: 'multi-track', filePath: '/downloads/file.torrent' });
+    const parseTorrent = jest.fn();
+    const context = createContext({ type: 'multi-track', filePath: '/downloads/file.torrent', parseTorrent });
 
     await new CheckTorrentFile().execute(context as any);
 
@@ -258,13 +300,12 @@ describe('torrents actions', () => {
     const fs = jest.requireMock('fs') as { readFile: jest.Mock };
     fs.readFile.mockImplementation((_path, cb) => cb(null, Buffer.from('torrent')));
 
-    const parseTorrent = (jest.requireMock('parse-torrent') as { default: jest.Mock }).default;
-    parseTorrent.mockReturnValue({ files: [] });
+    const parseTorrent = jest.fn().mockReturnValue({ files: [] });
 
     const { getDestination } = jest.requireMock('./torrent.js') as { getDestination: jest.Mock };
     getDestination.mockReturnValue({ qdir: '/q', fdir: '/tv' });
 
-    const context = createContext({ filePath: '/downloads/file.torrent' });
+    const context = createContext({ filePath: '/downloads/file.torrent', parseTorrent });
 
     await new CheckTorrentFile().execute(context as any);
 
@@ -276,13 +317,12 @@ describe('torrents actions', () => {
     const fs = jest.requireMock('fs') as { readFile: jest.Mock };
     fs.readFile.mockImplementation((_path, cb) => cb(null, Buffer.from('torrent')));
 
-    const parseTorrent = (jest.requireMock('parse-torrent') as { default: jest.Mock }).default;
-    parseTorrent.mockReturnValue({ files: [] });
+    const parseTorrent = jest.fn().mockReturnValue({ files: [] });
 
     const { getDestination } = jest.requireMock('./torrent.js') as { getDestination: jest.Mock };
     getDestination.mockReturnValue({ qdir: '/q', fdir: '/movies' });
 
-    const context = createContext({ filePath: '/downloads/file.torrent' });
+    const context = createContext({ filePath: '/downloads/file.torrent', parseTorrent });
 
     await new CheckTorrentFile().execute(context as any);
 
@@ -293,13 +333,12 @@ describe('torrents actions', () => {
     const fs = jest.requireMock('fs') as { readFile: jest.Mock };
     fs.readFile.mockImplementation((_path, cb) => cb(null, Buffer.from('torrent')));
 
-    const parseTorrent = (jest.requireMock('parse-torrent') as { default: jest.Mock }).default;
-    parseTorrent.mockReturnValue({ files: [] });
+    const parseTorrent = jest.fn().mockReturnValue({ files: [] });
 
     const { getDestination } = jest.requireMock('./torrent.js') as { getDestination: jest.Mock };
     getDestination.mockReturnValue({ qdir: '/q', fdir: '/unknown' });
 
-    const context = createContext({ filePath: '/downloads/file.torrent' });
+    const context = createContext({ filePath: '/downloads/file.torrent', parseTorrent });
 
     await new CheckTorrentFile().execute(context as any);
 
@@ -319,8 +358,7 @@ describe('torrents actions', () => {
     const fs = jest.requireMock('fs') as { readFile: jest.Mock };
     fs.readFile.mockImplementation((_path, cb) => cb(null, Buffer.from('torrent')));
 
-    const parseTorrent = (jest.requireMock('parse-torrent') as { default: jest.Mock }).default;
-    parseTorrent.mockReturnValue({
+    const parseTorrent = jest.fn().mockReturnValue({
       name: 'Show',
       files: [{ path: path.join('Show', 'ep1.mkv') }],
     });
@@ -328,7 +366,7 @@ describe('torrents actions', () => {
     const multiTrack = (jest.requireMock('./multi-track.js') as { default: jest.Mock }).default;
     multiTrack.mockReturnValue({ video: 'Show/*.mkv', audio: null, subs: null });
 
-    const context = createContext({ filePath: '/downloads/file.torrent' });
+    const context = createContext({ filePath: '/downloads/file.torrent', parseTorrent });
 
     await new ExtractTorrentPattern().execute(context as any);
 
@@ -339,8 +377,7 @@ describe('torrents actions', () => {
     const fs = jest.requireMock('fs') as { readFile: jest.Mock };
     fs.readFile.mockImplementation((_path, cb) => cb(null, Buffer.from('torrent')));
 
-    const parseTorrent = (jest.requireMock('parse-torrent') as { default: jest.Mock }).default;
-    parseTorrent.mockReturnValue({
+    const parseTorrent = jest.fn().mockReturnValue({
       name: 'Show',
       files: [{ path: path.join('Show', 'ep1.mkv') }],
     });
@@ -348,7 +385,7 @@ describe('torrents actions', () => {
     const multiTrack = (jest.requireMock('./multi-track.js') as { default: jest.Mock }).default;
     multiTrack.mockReturnValue({ video: 'Show/*.mkv', audio: 'Show/*.mka', subs: null });
 
-    const context = createContext({ filePath: '/downloads/file.torrent' });
+    const context = createContext({ filePath: '/downloads/file.torrent', parseTorrent });
 
     await new ExtractTorrentPattern().execute(context as any);
 
@@ -415,10 +452,9 @@ describe('torrents actions', () => {
     const fs = jest.requireMock('fs') as { readFile: jest.Mock };
     fs.readFile.mockImplementation((_path, cb) => cb(null, Buffer.from('torrent')));
 
-    const parseTorrent = (jest.requireMock('parse-torrent') as { default: jest.Mock }).default;
-    parseTorrent.mockReturnValue({ name: 'Show' });
+    const parseTorrent = jest.fn().mockReturnValue({ name: 'Show' });
 
-    const context = createContext({ filePath: '/downloads/file.torrent' });
+    const context = createContext({ filePath: '/downloads/file.torrent', parseTorrent });
 
     await new ReadTorrentFile().execute(context as any);
 
