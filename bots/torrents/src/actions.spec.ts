@@ -23,6 +23,7 @@ import {
   SendTorrentFile,
   SetLastCheckedDate,
   StoreSearchResults,
+  UpdateSearchResultTitles,
   ConvertMultiTrack,
 } from './actions.js';
 
@@ -630,6 +631,50 @@ describe('torrents actions', () => {
 
     expect(context.tlog).toHaveBeenCalledWith('Search failed. Try again later.');
     expect(context.abort).toHaveBeenCalled();
+  });
+
+  it('UpdateSearchResultTitles uses Wikidata label in user language', async () => {
+    const fetchMock = getFetchMock();
+    fetchMock
+      .mockResolvedValueOnce(mockFetchResponse({
+        json: jest.fn().mockResolvedValue({ search: [{ id: 'Q1' }] }),
+      }))
+      .mockResolvedValueOnce(mockFetchResponse({
+        json: jest.fn().mockResolvedValue({
+          entities: {
+            Q1: { labels: { ru: { value: 'Legenda Hei' }, en: { value: 'The Legend of Hei' } } },
+          },
+        }),
+      }));
+
+    const context = createContext({
+      results: [{ Guid: 'g1', Link: 'l1', PublishDate: 'd1', Title: 'The Legend of Hei (2019)' }],
+      language: 'ru',
+    });
+
+    await new UpdateSearchResultTitles().execute(context as any);
+
+    expect(context.extend).toHaveBeenCalledWith({
+      results: [{ Guid: 'g1', Link: 'l1', PublishDate: 'd1', Title: 'Legenda Hei (2019)' }],
+    });
+  });
+
+  it('UpdateSearchResultTitles keeps title when Wikidata has no match', async () => {
+    const fetchMock = getFetchMock();
+    fetchMock.mockResolvedValue(mockFetchResponse({
+      json: jest.fn().mockResolvedValue({ search: [] }),
+    }));
+
+    const context = createContext({
+      results: [{ Guid: 'g1', Link: 'l1', PublishDate: 'd1', Title: 'Unknown Movie 2024' }],
+      language: 'en',
+    });
+
+    await new UpdateSearchResultTitles().execute(context as any);
+
+    expect(context.extend).toHaveBeenCalledWith({
+      results: [{ Guid: 'g1', Link: 'l1', PublishDate: 'd1', Title: 'Unknown Movie 2024' }],
+    });
   });
 
   it('StoreSearchResults caches top results', async () => {

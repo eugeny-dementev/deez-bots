@@ -23,6 +23,7 @@ import {
   SendTorrentFile,
   SetLastCheckedDate,
   StoreSearchResults,
+  UpdateSearchResultTitles,
   TopicConfigContext,
   SearchQueryContext
 } from './actions.js';
@@ -114,6 +115,7 @@ export const handleSearchQuery: () => QueueAction[] = () => [
   InjectNotifications,
   notifications.tadd<SearchQueryContext>(({ query }) => `Searching: ${query}`),
   SearchByQuery,
+  UpdateSearchResultTitles,
   ReplySearchResults,
   StoreSearchResults,
 ];

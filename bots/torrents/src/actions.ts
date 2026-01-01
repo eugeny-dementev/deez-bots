@@ -50,6 +50,10 @@ export type FileContext = {
 
 type ParseTorrentFn = (data: Buffer) => Torrent;
 
+type WikidataSearchResult = {
+  id?: string;
+};
+
 async function resolveParseTorrent(context: unknown): Promise<ParseTorrentFn> {
   const maybeContext = context as { parseTorrent?: ParseTorrentFn } | null;
   if (typeof maybeContext?.parseTorrent === 'function') {
@@ -59,6 +63,125 @@ async function resolveParseTorrent(context: unknown): Promise<ParseTorrentFn> {
   const mod = await import('parse-torrent');
   const parser = (mod as { default?: unknown }).default ?? mod;
   return parser as unknown as ParseTorrentFn;
+}
+
+function normalizeLanguage(language?: string): string {
+  if (!language) {
+    return 'en';
+  }
+
+  const normalized = language.toLowerCase();
+  const base = normalized.split('-')[0]?.trim();
+  return base || 'en';
+}
+
+function extractTitleCandidates(rawTitle: string): { candidates: string[]; year?: string; suffix?: string } {
+  const yearMatch = rawTitle.match(/\b(19|20)\d{2}\b/);
+  const year = yearMatch?.[0];
+
+  const suffixIndex = rawTitle.search(/[\[\(]/);
+  const suffix = suffixIndex >= 0 ? rawTitle.slice(suffixIndex).trim() : undefined;
+  const titlePart = suffixIndex >= 0 ? rawTitle.slice(0, suffixIndex) : rawTitle;
+
+  const cleaned = titlePart
+    .replace(/\b(19|20)\d{2}\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const candidates = cleaned
+    .split(/\s*\/\s*|\s*\|\s*|\s*;\s*/)
+    .map((value) => value.replace(/^[\s\-:]+|[\s\-:]+$/g, '').trim())
+    .filter((value) => value.length > 1);
+
+  const uniqueCandidates = Array.from(new Set(candidates));
+
+  return { candidates: uniqueCandidates, year, suffix };
+}
+
+async function searchWikidataEntity(search: string, language: string): Promise<string | null> {
+  const url = new URL('https://www.wikidata.org/w/api.php');
+  url.searchParams.set('action', 'wbsearchentities');
+  url.searchParams.set('search', search);
+  url.searchParams.set('language', language);
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('limit', '1');
+  url.searchParams.set('type', 'item');
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    return null;
+  }
+
+  const data = await response.json() as { search?: WikidataSearchResult[] };
+  const first = data?.search?.[0];
+
+  return first?.id ?? null;
+}
+
+async function getWikidataLabel(entityId: string, language: string): Promise<string | null> {
+  const url = new URL('https://www.wikidata.org/w/api.php');
+  url.searchParams.set('action', 'wbgetentities');
+  url.searchParams.set('ids', entityId);
+  url.searchParams.set('props', 'labels');
+  url.searchParams.set('languages', `${language}|en`);
+  url.searchParams.set('format', 'json');
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    return null;
+  }
+
+  const data = await response.json() as {
+    entities?: Record<string, { labels?: Record<string, { value?: string }> }>;
+  };
+
+  const entity = data.entities?.[entityId];
+  const label = entity?.labels?.[language]?.value ?? entity?.labels?.['en']?.value;
+
+  return label ?? null;
+}
+
+async function resolveWikidataTitle(
+  candidates: string[],
+  year: string | undefined,
+  language: string,
+): Promise<string | null> {
+  const searchLanguages = Array.from(new Set(['en', language]));
+
+  for (const candidate of candidates) {
+    const searchTerms = year ? [`${candidate} ${year}`, candidate] : [candidate];
+
+    for (const searchTerm of searchTerms) {
+      for (const searchLanguage of searchLanguages) {
+        const entityId = await searchWikidataEntity(searchTerm, searchLanguage);
+        if (!entityId) {
+          continue;
+        }
+
+        const label = await getWikidataLabel(entityId, language);
+        if (label) {
+          return label;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+function buildLocalizedTitle(label: string, year: string | undefined, suffix?: string): string {
+  let title = label.trim();
+  const hasYearInSuffix = Boolean(year && suffix?.includes(year));
+
+  if (year && !hasYearInSuffix) {
+    title = `${title} (${year})`;
+  }
+
+  if (suffix) {
+    title = `${title} ${suffix}`.trim();
+  }
+
+  return title;
 }
 export class RenameFile extends Action<CompContext & FileContext> {
   async execute(context: BotContext & LoggerOutput & NotificationsOutput & FileContext & QueueContext): Promise<void> {
@@ -526,6 +649,7 @@ export type Topic = {
 }
 export type SearchQueryContext = {
   query: string,
+  language?: string,
 }
 export type SearchResultsContext = {
   results: JacketResponseItem[],
@@ -597,6 +721,48 @@ export class SearchByQuery extends Action<SearchQueryContext & CompContext> {
   async onError(error: Error, context: QueueContext): Promise<void> {
     await (context as unknown as Partial<CompContext>).tlog?.('Search failed. Try again later.');
     await super.onError(error, context);
+  }
+}
+
+export class UpdateSearchResultTitles extends Action<SearchQueryContext & SearchResultsContext & CompContext> {
+  async execute(context: SearchQueryContext & SearchResultsContext & CompContext & QueueContext): Promise<void> {
+    const { results } = context;
+    const language = normalizeLanguage(context.language);
+
+    if (!results?.length) {
+      return;
+    }
+
+    const updatedResults: JacketResponseItem[] = [];
+
+    for (const result of results) {
+      const { candidates, year, suffix } = extractTitleCandidates(result.Title);
+      if (!candidates.length) {
+        updatedResults.push(result);
+        continue;
+      }
+
+      try {
+        const label = await resolveWikidataTitle(candidates, year, language);
+        if (!label) {
+          updatedResults.push(result);
+          continue;
+        }
+
+        updatedResults.push({
+          ...result,
+          Title: buildLocalizedTitle(label, year, suffix),
+        });
+      } catch (error) {
+        context.logger.warn('Wikidata lookup failed', {
+          title: result.Title,
+          error: (error as Error).message,
+        });
+        updatedResults.push(result);
+      }
+    }
+
+    context.extend({ results: updatedResults });
   }
 }
 

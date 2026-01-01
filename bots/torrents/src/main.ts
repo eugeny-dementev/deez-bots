@@ -98,12 +98,13 @@ bot.on('message:text', async (ctx) => {
   const message = ctx.message;
   const chatId = message.chat.id;
   const query = message.text.trim();
+  const language = ctx.from?.language_code;
 
   if (!query || query.startsWith('/')) {
     return;
   }
 
-  queue.add(handleSearchQuery(), { query, bot, logger, adminId: adminChatId, chatId });
+  queue.add(handleSearchQuery(), { query, language, bot, logger, adminId: adminChatId, chatId });
 });
 
 bot.callbackQuery(/search:get:(\d+)/, async (ctx) => {
