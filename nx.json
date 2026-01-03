@@ -12,7 +12,14 @@
       "!{projectRoot}/src/test-setup.[jt]s",
       "!{projectRoot}/test-setup.[jt]s"
     ],
-    "sharedGlobals": []
+    "sharedGlobals": [
+      "{workspaceRoot}/nx.json",
+      "{workspaceRoot}/tsconfig.base.json",
+      "{workspaceRoot}/package.json",
+      "{workspaceRoot}/yarn.lock",
+      "{workspaceRoot}/package-lock.json",
+      "{workspaceRoot}/pnpm-lock.yaml"
+    ]
   },
   "targetDefaults": {
     "@nx/esbuild:esbuild": {
@@ -21,9 +28,27 @@
       "inputs": ["production", "^production"]
     },
     "build": {
+      "cache": true,
       "inputs": ["production", "^production"]
     },
+    "lint": {
+      "cache": true,
+      "inputs": ["default", "^default", "{workspaceRoot}/.eslintrc.json"]
+    },
+    "test": {
+      "cache": true,
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/jest.preset.js",
+        "{workspaceRoot}/jest.config.ts"
+      ]
+    },
+    "serve": {
+      "cache": false
+    },
     "docker-build": {
+      "cache": false,
       "inputs": ["production", "^production"]
     }
   },
